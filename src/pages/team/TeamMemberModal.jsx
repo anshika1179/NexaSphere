@@ -23,7 +23,7 @@ function CopyPopup({ value, onClose }) {
     <div className="copy-popup">
       <span className="copy-popup-value">{value}</span>
       <button className="copy-popup-btn" onClick={handleCopy}>
-        {copied ? '✅ Copied!' : '📋 Copy'}
+        {copied ? '✅ Copied!' : '[=] Copy'}
       </button>
     </div>
   );
@@ -31,9 +31,9 @@ function CopyPopup({ value, onClose }) {
 
 function getWhatsappDisplay(raw) {
   if (!raw) return null;
-  
+
   if (raw.startsWith('http')) return raw;
-  
+
   return raw;
 }
 
@@ -52,6 +52,7 @@ function ModalContent({ member, onClose }) {
 
   const hasSocial = member.linkedin || member.whatsapp || member.instagram || member.email;
   const whatsappValue = getWhatsappDisplay(member.whatsapp);
+  const [imgError, setImgError] = useState(false);
 
   return (
     <div
@@ -59,36 +60,47 @@ function ModalContent({ member, onClose }) {
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div className="modal-box">
-        
+
         <button className="modal-close" onClick={onClose} aria-label="Close">✕</button>
 
-        
-        <img src={member.photo} alt={member.name} className="modal-photo" />
 
-        
+        <img
+          src={
+            imgError
+              ? 'https://api.dicebear.com/7.x/initials/svg?seed=' +
+              encodeURIComponent(member.name) +
+              '&backgroundColor=CC1111&textColor=ffffff'
+              : member.photo
+          }
+          alt={member.name}
+          className="modal-photo"
+          onError={() => setImgError(true)}
+        />
+
+
         <div className="modal-name">{member.name}</div>
         <div className="modal-role">{member.role}</div>
 
-        
+
         <div className="modal-info">
           <div className="modal-info-row">
-            <span className="modal-info-label">🎓 Year</span>
+            <span className="modal-info-label">[Edu] Year</span>
             <span className="modal-info-value">{member.year}</span>
           </div>
           <div className="modal-info-row">
-            <span className="modal-info-label">🔬 Branch</span>
+            <span className="modal-info-label">[Lab] Branch</span>
             <span className="modal-info-value">{member.branch}</span>
           </div>
           <div className="modal-info-row">
-            <span className="modal-info-label">📋 Section</span>
+            <span className="modal-info-label">[=] Section</span>
             <span className="modal-info-value">{member.section}</span>
           </div>
         </div>
 
-        
+
         {member.achievements && member.achievements.length > 0 && (
           <div className="modal-achievements">
-            <div className="modal-achievements-title">🏆 Achievements</div>
+            <div className="modal-achievements-title">[#1] Achievements</div>
             <ul className="modal-achievements-list">
               {member.achievements.map((ach, idx) => (
                 <li key={idx} className="modal-achievement-item">{ach}</li>
@@ -97,14 +109,14 @@ function ModalContent({ member, onClose }) {
           </div>
         )}
 
-        
+
         {member.testimonials && member.testimonials.length > 0 && (
           <div className="modal-testimonials">
-            <div className="modal-testimonials-title">💬 Testimonials</div>
+            <div className="modal-testimonials-title">[ ] Testimonials</div>
             <ul className="modal-testimonials-list">
               {member.testimonials.map((t, idx) => (
                 <li key={idx} className="modal-testimonial-item">
-                  <span className="testimonial-text">“{t.text}”</span>
+                  <span className="testimonial-text">�{t.text}�</span>
                   <span className="testimonial-author">- {t.author}</span>
                 </li>
               ))}
@@ -112,7 +124,7 @@ function ModalContent({ member, onClose }) {
           </div>
         )}
 
-        
+
         {hasSocial && (
           <div className="modal-social">
             {member.linkedin && (
@@ -122,7 +134,7 @@ function ModalContent({ member, onClose }) {
                 rel="noopener noreferrer"
                 className="modal-social-btn btn-linkedin"
               >
-                🔗 LinkedIn
+                -> LinkedIn
               </a>
             )}
 
@@ -135,7 +147,7 @@ function ModalContent({ member, onClose }) {
                     setActivePopup(activePopup === 'whatsapp' ? null : 'whatsapp');
                   }}
                 >
-                  💬 WhatsApp
+                  [ ] WhatsApp
                 </button>
                 {activePopup === 'whatsapp' && (
                   <CopyPopup value={whatsappValue} onClose={() => setActivePopup(null)} />
@@ -150,7 +162,7 @@ function ModalContent({ member, onClose }) {
                 rel="noopener noreferrer"
                 className="modal-social-btn btn-instagram"
               >
-                📸 Instagram
+                [img] Instagram
               </a>
             )}
 
