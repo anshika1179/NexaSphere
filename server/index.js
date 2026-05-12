@@ -6,8 +6,10 @@ import { google } from 'googleapis';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { ZodError } from 'zod';
 
 import { adminAuthMiddleware } from './middleware/adminAuthMiddleware.js';
+import { normalizeFormSubmission } from './validators/formSchemas.js';
 import {
   sanitizeActivityEventRecord,
   sanitizeCoreTeamMemberRecord,
@@ -669,19 +671,25 @@ app.delete('/api/admin/core-team/:id', adminAuth, async (req, res) => {
 
 async function handleForm(formType, req, res) {
   try {
-    const body = req.body || {};
-    if (!toSafeString(body.fullName, 120)) return res.status(400).json({ error: 'fullName is required' });
-    if (!isEmail(body.collegeEmail)) return res.status(400).json({ error: 'Invalid email address' });
-    if (!isPhoneish(body.whatsapp)) return res.status(400).json({ error: 'Invalid contact number' });
+    const payload = normalizeFormSubmission(formType, req.body || {});
 
-    const savedToSupabase = await appendToSupabaseForms(formType, body);
+    const savedToSupabase = await appendToSupabaseForms(formType, payload);
     try {
-      await appendFormToSheet(formType, body);
+      await appendFormToSheet(formType, payload);
     } catch (sheetErr) {
       if (!savedToSupabase) throw sheetErr;
     }
     return res.json({ ok: true });
   } catch (e) {
+    if (e instanceof ZodError) {
+      return res.status(400).json({
+        error: 'Invalid form submission',
+        issues: e.issues.map((issue) => ({
+          path: issue.path.join('.'),
+          message: issue.message,
+        })),
+      });
+    }
     return res.status(500).json({ error: e?.message || 'Submission failed' });
   }
 }
