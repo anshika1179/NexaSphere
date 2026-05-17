@@ -169,20 +169,8 @@ function normalizePhone(value) {
   return String(value || '').replace(/[^\d]/g, '');
 }
 
-async function canManageActivityEvent({ name, email, phone, password }) {
-  const expectedPassword = process.env.ADMIN_EVENT_PASSWORD || 'Admin@123';
-  if (String(password || '') !== expectedPassword) return false;
-  const n = String(name || '').trim().toLowerCase();
-  const e = String(email || '').trim().toLowerCase();
-  const p = normalizePhone(phone);
-
-  const members = await listCoreTeamStore();
-  return members.some(m =>
-    m.name.toLowerCase() === n &&
-    m.email.toLowerCase() === e &&
-    normalizePhone(m.whatsapp) === p
-  );
-}
+app.on('CORE_TEAM_MEMBER_ADDED', (event) => console.log(`[EVENT] CORE_TEAM_MEMBER_ADDED:`, event));
+app.on('CORE_TEAM_MEMBER_REMOVED', (event) => console.log(`[EVENT] CORE_TEAM_MEMBER_REMOVED:`, event));
 
 async function listEventsStore() {
   if (HAS_SUPABASE) {
@@ -426,15 +414,81 @@ async function deleteCoreTeamStore(id) {
   return true;
 }
 
-adminEvents.on('CORE_TEAM_MEMBER_ADDED', (event) => console.log('[EVENT] CORE_TEAM_MEMBER_ADDED:', event));
-adminEvents.on('CORE_TEAM_MEMBER_REMOVED', (event) => console.log('[EVENT] CORE_TEAM_MEMBER_REMOVED:', event));
+async function appendToSupabaseForms(formType, payload) {
+  if (!HAS_SUPABASE) return false;
+  try {
+    await supabaseRequest('form_submissions', {
+      method: 'POST',
+      body: [{
+        form_type: formType,
+        full_name: toSafeString(payload.fullName, 140),
+        college_email: toSafeString(payload.collegeEmail, 140),
+        whatsapp: toSafeString(payload.whatsapp, 40),
+        payload,
+      }],
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
 
-app.get('/healthz', wrapAsync(async (req, res) => {
+async function appendFormToSheet(formType, payload) {
+  const clientEmail = requiredEnv('GOOGLE_SERVICE_ACCOUNT_EMAIL');
+  const privateKey = normalizePrivateKey(requiredEnv('GOOGLE_PRIVATE_KEY'));
+  const spreadsheetId = requiredEnv('GOOGLE_SHEET_ID');
+
+  const defaultTab = process.env.GOOGLE_SHEET_TAB_NAME || 'Responses';
+  const tabMap = {
+    membership: process.env.GOOGLE_MEMBERSHIP_TAB_NAME || 'MembershipResponses',
+    recruitment: process.env.GOOGLE_RECRUITMENT_TAB_NAME || 'RecruitmentResponses',
+    core_team: process.env.GOOGLE_CORE_TEAM_TAB_NAME || 'CoreTeamResponses',
+  };
+  const sheetName = tabMap[formType] || defaultTab;
+
+  const auth = new google.auth.JWT({
+    email: clientEmail,
+    key: privateKey,
+    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+  });
+
+  const sheets = google.sheets({ version: 'v4', auth });
+
+  const now = new Date().toISOString();
+  const row = [
+    now,
+    formType,
+    toSafeString(payload.fullName, 140),
+    toSafeString(payload.collegeEmail, 140),
+    toSafeString(payload.whatsapp, 40),
+    JSON.stringify(payload),
+  ];
+
+  await sheets.spreadsheets.values.append({
+    spreadsheetId,
+    range: `${sheetName}!A1`,
+    valueInputOption: 'USER_ENTERED',
+    insertDataOption: 'INSERT_ROWS',
+    requestBody: { values: [row] },
+  });
+}
+
+function isEmail(s) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(s || '').trim());
+}
+
+function isPhoneish(s) {
+  const v = String(s || '').trim();
+  return /^[+()\-\s0-9]{8,20}$/.test(v);
+}
+
+app.get('/healthz', async (req, res) => {
   const events = await eventsService.listEvents();
-  return res.json({ ok: true, events: events.length, storage: HAS_SUPABASE ? 'supabase' : 'file' });
-}));
+  res.json({ ok: true, events: events.length, storage: HAS_SUPABASE ? 'supabase' : 'file' });
+});
 
 app.get('/api/content/events', eventsController.listEvents);
+
 app.get('/api/content/activity-events/:activityKey', activityEventsController.listActivityEvents);
 app.post('/api/content/activity-events/:activityKey', activityEventsController.addActivityEvent);
 app.delete('/api/content/activity-events/:activityKey/:eventId', activityEventsController.deleteActivityEvent);
@@ -448,10 +502,18 @@ app.post('/api/admin/events', adminAuth, eventsController.adminCreateEvent);
 app.put('/api/admin/events/:id', adminAuth, eventsController.adminUpdateEvent);
 app.delete('/api/admin/events/:id', adminAuth, eventsController.adminDeleteEvent);
 
-app.get('/api/content/core-team', wrapAsync(async (req, res) => {
-  const members = await coreTeamService.listMembers();
-  return res.json(members);
-}));
+app.get('/api/content/core-team', async (req, res) => {
+  try {
+    const members = await coreTeamService.listMembers();
+    return res.json(members);
+  } catch (e) {
+    return res.status(500).json({ error: e?.message || 'Failed to load core team' });
+  }
+});
+
+app.get('/api/admin/core-team', adminAuth, coreTeamController.adminListCoreTeamMembers);
+app.post('/api/admin/core-team', adminAuth, coreTeamController.adminAddCoreTeamMember);
+app.delete('/api/admin/core-team/:id', adminAuth, coreTeamController.adminDeleteCoreTeamMember);
 
 app.get('/api/admin/core-team', adminAuth, coreTeamController.adminListCoreTeamMembers);
 app.post('/api/admin/core-team', adminAuth, coreTeamController.adminAddCoreTeamMember);
@@ -488,7 +550,9 @@ app.delete('/api/admin/core-team/:id', adminAuth, coreTeamController.adminDelete
   }
 }
 
-app.use(errorHandler);
+app.post('/api/forms/membership', formsController.makeHandleForm('membership'));
+app.post('/api/forms/recruitment', formsController.makeHandleForm('recruitment'));
+app.post('/api/core-team/apply', formsController.makeHandleForm('core_team'));
 
 const port = Number(process.env.PORT || 8787);
 if (!process.env.VERCEL) {
