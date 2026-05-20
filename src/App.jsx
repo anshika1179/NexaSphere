@@ -202,6 +202,22 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (cinDone) {
+      const initPush = async () => {
+        try {
+          const { initializePushNotifications } = await import('./utils/pushNotificationClient');
+          const vapidKey = import.meta.env.VITE_VAPID_PUBLIC_KEY || 'BFG7-T9CszX7v2Xg707l3qTNY2p5N1N4iO3J8t5vJv5O7g7i5r5v5i5v5o5r5i5v5r5e5s5w5s';
+          await initializePushNotifications(vapidKey);
+        } catch (err) {
+          console.warn('Push notification initialization skipped or failed gracefully:', err);
+        }
+      };
+      const timer = setTimeout(initPush, 3500);
+      return () => clearTimeout(timer);
+    }
+  }, [cinDone]);
+
+  useEffect(() => {
     let alive = true;
     const base = (import.meta?.env?.VITE_API_BASE || '').replace(/\/+$/, '');
     const url  = base ? `${base}/api/content/events` : '/api/content/events';

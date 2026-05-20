@@ -12,6 +12,9 @@ import { ZodError } from 'zod';
 import { normalizeFormSubmission } from './validators/formSchemas.js';
 import { adminAuthMiddleware } from './middleware/adminAuthMiddleware.js';
 import analyticsRouter from './routes/analytics.js';
+import { initializeSocketIO, emitToRoom, getRoom } from './config/socket.js';
+import adminStreamRouter from './routes/adminStream.js';
+import { broadcastSSEEvent } from './services/sseService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -571,6 +574,7 @@ app.delete('/api/content/activity-events/:activityKey/:eventId', async (req, res
 app.post('/api/admin/login', adminAuthMiddleware.login);
 app.post('/api/admin/logout', adminAuthMiddleware.logout);
 app.use('/api/admin/analytics', adminAuth, analyticsRouter);
+app.use('/api/admin/metrics', adminAuth, adminStreamRouter);
 
 app.get('/api/admin/events', adminAuth, async (req, res) => {
   return res.json({ events: await listEventsStore() });
@@ -698,6 +702,14 @@ async function handleForm(formType, req, res) {
       // We don't fail the whole request if email fails, but we log it.
     }
 
+    // NEW: Real-time notification and metrics updates
+    try {
+      broadcastSSEEvent('registration', { formType, fullName: payload.fullName, timestamp: new Date().toISOString() });
+      emitToRoom(getRoom('admin'), 'admin:new-registration', { formType, userName: payload.fullName, timestamp: new Date() });
+    } catch (realtimeErr) {
+      console.error('[Form Handler] Failed to broadcast real-time updates:', realtimeErr);
+    }
+
     return res.json({ ok: true });
   } catch (e) {
     if (e instanceof ZodError) {
@@ -717,21 +729,44 @@ app.post('/api/forms/membership', (req, res) => handleForm('membership', req, re
 app.post('/api/forms/recruitment', (req, res) => handleForm('recruitment', req, res));
 app.post('/api/core-team/apply', (req, res) => handleForm('core_team', req, res));
 
+// Real-time notification subscriber channels
+const pushSubscriptions = new Set();
+app.post('/api/notifications/subscribe', (req, res) => {
+  try {
+    const { subscription } = req.body;
+    if (subscription) pushSubscriptions.add(JSON.stringify(subscription));
+    return res.json({ success: true });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+app.post('/api/notifications/unsubscribe', (req, res) => {
+  try {
+    const { subscription } = req.body;
+    if (subscription) pushSubscriptions.delete(JSON.stringify(subscription));
+    return res.json({ success: true });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 const port = Number(process.env.PORT || 8787);
 if (!process.env.VERCEL) {
   const boot = HAS_SUPABASE ? Promise.resolve() : ensureContentFile();
   boot.then(() => {
-    app.listen(port, () => {
+    const server = app.listen(port, () => {
       // eslint-disable-next-line no-console
       console.log(`NexaSphere server listening on http://localhost:${port}`);
     });
+    initializeSocketIO(server);
   });
 } else {
   // Vercel/Render style deployments rely on the platform to start the server.
-  app.listen(port, () => {
+  const server = app.listen(port, () => {
     // eslint-disable-next-line no-console
     console.log(`NexaSphere server listening on http://localhost:${port}`);
   });
+  initializeSocketIO(server);
 }
 
 export default app;
