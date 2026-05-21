@@ -4,6 +4,8 @@ import './styles/globals.css';
 import './styles/animations.css';
 import './styles/chatbot.css';
 import './styles/components.css';
+import './styles/portfolio.css';
+
 import './styles/aurora.css';
 import './styles/motion.css';
 import SearchBar from './components/SearchBar';
@@ -37,6 +39,8 @@ import MembershipPage      from './pages/membership/MembershipPage';
 import AdminPage           from './pages/admin/AdminPage';
 import RoadmapsPage        from './pages/roadmaps/RoadmapsPage';
 import ProjectsPage        from './pages/projects/ProjectsPage';
+import PortfolioBuilder    from './components/portfolio/PortfolioBuilder';
+import PublicPortfolio     from './pages/portfolio/PublicPortfolio';
 
 import { activityPages }   from './data/activities/index';
 import { events as fallbackEvents } from './data/eventsData';
@@ -49,7 +53,7 @@ import { BookmarkProvider } from './context/BookmarkContext';
 import BookmarksDrawer from './components/bookmarks/BookmarksDrawer';
 
 const MNH = 88, DNH = 64;
-const TABS = ['Home','Activities','Events','Projects','Roadmaps','About','Team','Contact'];
+const TABS = ['Home','Activities','Events','Projects','Roadmaps','Portfolio','About','Team','Contact'];
 
 /* ── Page wipe transition ── */
 function Wipe({ on, ph }) {
@@ -221,6 +225,15 @@ export default function App() {
     localStorage.setItem('ns-theme', theme);
   }, [theme]);
 
+  useEffect(() => {
+    const path = window.location.pathname;
+    const match = path.match(/^\/p\/([a-zA-Z0-9_-]+)/);
+    if (match) {
+      const name = match[1];
+      setPage({ type: 'portfolio', username: name });
+    }
+  }, []);
+
   const toggleTheme = useCallback(() => {
     setTheme(t => t === 'dark' ? 'light' : 'dark');
   }, []);
@@ -345,7 +358,7 @@ export default function App() {
   }, []);
 
   const onTab = useCallback(tab => {
-    if (['Activities','Events','Projects','Roadmaps','About','Team','Contact'].includes(tab)) {
+    if (['Activities','Events','Projects','Roadmaps','Portfolio','About','Team','Contact'].includes(tab)) {
       nav(() => { setPage({ type:'section', section:tab }); setActiveTab(tab); });
       return;
     }
@@ -399,6 +412,7 @@ export default function App() {
   }, [nav]);
 
   const onBackHome = useCallback(() => {
+    window.history.pushState({}, '', '/');
     nav(() => { setPage(null); setActiveTab('Home'); window.scrollTo({ top:0 }); });
   }, [nav]);
 
@@ -440,6 +454,7 @@ export default function App() {
             {page.section === 'Events'     && <EventsPage onBack={onBackHome} onEventClick={onKSSClick} events={eventsData}/>}
             {page.section === 'Projects'   && <ProjectsPage onBack={onBackHome}/>}
             {page.section === 'Roadmaps'   && <RoadmapsPage onBack={onBackHome}/>}
+            {page.section === 'Portfolio'  && <PortfolioBuilder />}
             {page.section === 'About'      && <AboutPage onBack={onBackHome}/>}
             {page.section === 'Team'       && <TeamPage onBack={onBackHome} onApply={openApply}/>}
             {page.section === 'Contact'    && <ContactPage onBack={onBackHome}/>}
@@ -450,7 +465,8 @@ export default function App() {
             {page.type === 'event' && page.event && (
               <EventDetailPage event={page.event} onBack={page.activityKey ? onBackAct : onBackMain}/>
             )}
-            {page.type && !['section','activity','event','apply','join'].includes(page.type) && (
+            {page.type === 'portfolio' && <PublicPortfolio username={page.username} onBack={onBackHome} />}
+            {page.type && !['section','activity','event','apply','join','portfolio'].includes(page.type) && (
               <NotFoundPage onGoHome={onBackHome}/>
             )}
           </PageIn>
