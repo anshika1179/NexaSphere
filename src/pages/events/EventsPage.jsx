@@ -4,6 +4,7 @@ import { BannerOrbs } from '../../shared/MotionLayer';
 import Footer from '../../shared/Footer';
 import { DynamicIcon } from '../../shared/Icons';
 import PersonalizedFeed from '../../components/recommendation/PersonalizedFeed';
+import EventCalendarView from '../../components/calendar/EventCalendarView';
 
 export default function EventsPage({ onBack, onEventClick, events = fallbackEvents }) {
   const [view, setView] = useState('timeline');
@@ -205,14 +206,7 @@ export default function EventsPage({ onBack, onEventClick, events = fallbackEven
             </div>
           </div>
         ) : (
-          // Calendar view component would go here
-          <div className="events-timeline ns-reveal">
-            {/* Calendar view content - add your calendar component here */}
-            <div className="timeline-card" style={{ textAlign: 'center', padding: '40px' }}>
-              <DynamicIcon name="Calendar" size={40} style={{ color: 'var(--c1)', marginBottom: '16px' }} />
-              <p style={{ color: 'var(--t2)' }}>Calendar view coming soon</p>
-            </div>
-          </div>
+          <EventCalendarView events={events} onEventClick={onEventClick} />
         )}
       </div>
 
