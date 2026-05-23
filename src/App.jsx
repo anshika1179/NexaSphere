@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+
 import './styles/themes.css';
 import './styles/globals.css';
 import './styles/animations.css';
@@ -9,7 +10,7 @@ import './styles/portfolio.css';
 import './styles/aurora.css';
 import './styles/motion.css';
 import SearchBar from './components/SearchBar';
-
+import FloatingDock from "./components/common/FloatingDock";
 import ParticleBackground  from './shared/ParticleBackground';
 import GeometricGridBackground from './shared/GeometricGridBackground';
 import ScrollProgress      from './shared/ScrollProgress';
@@ -583,7 +584,10 @@ export default function App() {
           else if (type === 'Roadmap') onTab('Roadmaps');
         }}
       />
+      {cinDone && <FloatingDock />}
     </BookmarkProvider>
+
+    
   );
 }
 
