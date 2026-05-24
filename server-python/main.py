@@ -36,7 +36,11 @@ else:
         model_name='gemini-3.1-flash-lite-preview'
     )
 
-app = FastAPI(title="NexaSphere AI Core")
+app = FastAPI(
+    title="NexaSphere AI Core",
+    description="Python FastAPI backend for AI Chat and Recommendations.",
+    version="1.0.0"
+)
 
 @app.get("/")
 async def root():
@@ -47,6 +51,7 @@ app.include_router(forms.router)
 app.include_router(recommend.router)
 app.include_router(certificates.router)
 app.include_router(notifications.router)
+app.include_router(review.router)
 # 3. CORS Configuration
 origins = os.getenv("CORS_ORIGIN", "http://localhost:5173,http://localhost:5174,https://nexasphere-glbajaj.vercel.app,https://admin-nexasphere.vercel.app,https://nexa-sphere-sigma.vercel.app,https://admin-dashboard-navy-pi-22.vercel.app").split(",")
 
