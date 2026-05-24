@@ -36,11 +36,14 @@ else:
         model_name='gemini-3.1-flash-lite-preview'
     )
 
-app = FastAPI(
-    title="NexaSphere AI Core",
-    description="Python FastAPI backend for AI Chat and Recommendations.",
-    version="1.0.0"
-)
+from slowapi.errors import RateLimitExceeded
+from slowapi import _rate_limit_exceeded_handler
+from utils.security import limiter
+
+app = FastAPI(title="NexaSphere AI Core")
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 @app.get("/")
 async def root():
