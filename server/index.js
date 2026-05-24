@@ -16,6 +16,7 @@ import { initializeSocketIO, emitToRoom, getRoom } from './config/socket.js';
 import adminStreamRouter from './routes/adminStream.js';
 import { broadcastSSEEvent } from './services/sseService.js';
 import rateLimit from 'express-rate-limit';
+import { apiRateLimiter, authRateLimiter } from './middleware/rateLimiter.js';
 
 import { portfolioRepository } from './repositories/portfolioRepository.js';
 
@@ -53,6 +54,7 @@ function requestLogger(req, res, next) {
 }
 
 app.use(requestLogger);
+app.use('/api', apiRateLimiter);
 
 const adminAuth = adminAuthMiddleware.requireAdmin;
 const adminEvents = new EventEmitter();
@@ -627,7 +629,7 @@ app.delete('/api/content/activity-events/:activityKey/:eventId', async (req, res
   }
 });
 
-app.post('/api/admin/login', adminAuthMiddleware.login);
+app.post('/api/admin/login', authRateLimiter, adminAuthMiddleware.login);
 app.post('/api/admin/logout', adminAuthMiddleware.logout);
 app.use('/api/admin/analytics', adminAuth, analyticsRouter);
 app.use('/api/admin/metrics', adminAuth, adminStreamRouter);
