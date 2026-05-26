@@ -1,18 +1,24 @@
-import { io, Socket } from 'socket.io-client';
+import { io, Socket } from "socket.io-client";
+
+import { getSocketServerUrl, getSocketPath } from "../utils/runtimeConfig";
 
 // Keep a singleton instance
 let socketInstance: Socket | null = null;
 
-export const initializeSocket = (url: string = import.meta.env.VITE_API_URL || 'http://localhost:5000'): Socket => {
+export const initializeSocket = (url?: string): Socket => {
+  const socketUrl = url || getSocketServerUrl();
+  const socketPath = getSocketPath();
+
   if (!socketInstance) {
-    socketInstance = io(url, {
+    socketInstance = io(socketUrl, {
+      path: socketPath,
       reconnection: true,
       reconnectionAttempts: 10,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
       timeout: 20000,
       autoConnect: true,
-      transports: ['websocket'],
+      transports: ["websocket"],
     });
   }
   return socketInstance;
