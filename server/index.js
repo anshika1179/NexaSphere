@@ -15,6 +15,7 @@ import { adminAuthMiddleware } from "./middleware/adminAuthMiddleware.js";
 import analyticsRouter from "./routes/analytics.js";
 import { initializeSocketIO, emitToRoom, getRoom } from "./config/socket.js";
 import adminStreamRouter from "./routes/adminStream.js";
+import mentorshipRouter from "./routes/mentorship.js";
 import { broadcastSSEEvent } from "./services/sseService.js";
 import rateLimit from "express-rate-limit";
 import {
@@ -50,7 +51,7 @@ app.use(
           .filter(Boolean)
       : true,
     credentials: false,
-  }),
+  })
 );
 app.use(express.json({ limit: "512kb" }));
 
@@ -85,14 +86,15 @@ function requestLogger(req, res, next) {
 
 app.use(requestLogger);
 app.use("/api", apiRateLimiter);
+app.use("/api/mentorship", mentorshipRouter);
 
 const adminAuth = adminAuthMiddleware.requireAdmin;
 const adminEvents = new EventEmitter();
 adminEvents.on("CORE_TEAM_MEMBER_ADDED", (event) =>
-  console.log(`[EVENT] CORE_TEAM_MEMBER_ADDED:`, event),
+  console.log(`[EVENT] CORE_TEAM_MEMBER_ADDED:`, event)
 );
 adminEvents.on("CORE_TEAM_MEMBER_REMOVED", (event) =>
-  console.log(`[EVENT] CORE_TEAM_MEMBER_REMOVED:`, event),
+  console.log(`[EVENT] CORE_TEAM_MEMBER_REMOVED:`, event)
 );
 
 const defaultContent = {
@@ -140,7 +142,7 @@ function requiredStrongPassword(name) {
 
   if (value.length < 12 || !hasLower || !hasUpper || !hasNumber || !hasSymbol) {
     throw new Error(
-      `${name} must be at least 12 characters and include uppercase, lowercase, number, and symbol`,
+      `${name} must be at least 12 characters and include uppercase, lowercase, number, and symbol`
     );
   }
 
@@ -164,7 +166,7 @@ async function ensureContentFile() {
     await fs.writeFile(
       CONTENT_FILE,
       JSON.stringify(defaultContent, null, 2),
-      "utf8",
+      "utf8"
     );
   }
 }
@@ -339,7 +341,7 @@ async function canManageActivityEvent({ name, email, phone, password }) {
     (m) =>
       m.name.toLowerCase() === n &&
       m.email.toLowerCase() === e &&
-      normalizePhone(m.whatsapp) === p,
+      normalizePhone(m.whatsapp) === p
   );
 }
 
@@ -348,7 +350,7 @@ async function listEventsStore({ page = 1, limit = 20 } = {}) {
     const { rows, total } = await supabasePaginatedRequest(
       "events?select=*&order=created_at.desc",
       page,
-      limit,
+      limit
     );
     return {
       events: rows.map((r) =>
@@ -363,7 +365,7 @@ async function listEventsStore({ page = 1, limit = 20 } = {}) {
           tags: Array.isArray(r.tags) ? r.tags : [],
           createdAt: r.created_at,
           updatedAt: r.updated_at,
-        }),
+        })
       ),
       total,
     };
@@ -448,7 +450,7 @@ async function updateEventStore(id, patch) {
           tags: patch.tags,
           updated_at: new Date().toISOString(),
         },
-      },
+      }
     );
     if (!row) return null;
     return sanitizeEventRecord({
@@ -483,7 +485,7 @@ async function deleteEventStore(id) {
   if (HAS_SUPABASE) {
     const rows = await supabaseRequest(
       `events?id=eq.${encodeURIComponent(id)}`,
-      { method: "DELETE" },
+      { method: "DELETE" }
     );
     return Array.isArray(rows) && rows.length > 0;
   }
@@ -497,12 +499,15 @@ async function deleteEventStore(id) {
   });
 }
 
-async function listActivityEventsStore(activityKey, { page = 1, limit = 20 } = {}) {
+async function listActivityEventsStore(
+  activityKey,
+  { page = 1, limit = 20 } = {}
+) {
   if (HAS_SUPABASE) {
     const { rows, total } = await supabasePaginatedRequest(
       `activity_events?activity_key=eq.${encodeURIComponent(activityKey)}&select=*&order=created_at.desc`,
       page,
-      limit,
+      limit
     );
     return {
       events: rows.map((r) =>
@@ -514,14 +519,14 @@ async function listActivityEventsStore(activityKey, { page = 1, limit = 20 } = {
           description: r.description,
           status: r.status || "completed",
           createdAt: r.created_at,
-        }),
+        })
       ),
       total,
     };
   }
   const content = await readContent();
   const all = (content.activityEvents?.[activityKey] || []).map((event) =>
-    sanitizeActivityEventRecord(event),
+    sanitizeActivityEventRecord(event)
   );
   const total = all.length;
   const start = (page - 1) * limit;
@@ -578,7 +583,7 @@ async function deleteActivityEventStore(activityKey, eventId) {
   if (HAS_SUPABASE) {
     const rows = await supabaseRequest(
       `activity_events?activity_key=eq.${encodeURIComponent(activityKey)}&id=eq.${encodeURIComponent(eventId)}`,
-      { method: "DELETE" },
+      { method: "DELETE" }
     );
     return Array.isArray(rows) && rows.length > 0;
   }
@@ -597,7 +602,7 @@ async function deleteActivityEventStore(activityKey, eventId) {
 async function listCoreTeamStore() {
   if (HAS_SUPABASE) {
     const rows = await supabaseRequest(
-      "core_team_members?select=*&order=created_at.asc",
+      "core_team_members?select=*&order=created_at.asc"
     );
     return rows.map((r) =>
       sanitizeCoreTeamMemberRecord({
@@ -613,12 +618,12 @@ async function listCoreTeamStore() {
         instagram: r.instagram,
         photoUrl: r.photo_url,
         createdAt: r.created_at,
-      }),
+      })
     );
   }
   const content = await readContent();
   return (content.coreTeam || []).map((member) =>
-    sanitizeCoreTeamMemberRecord(member),
+    sanitizeCoreTeamMemberRecord(member)
   );
 }
 
@@ -678,7 +683,7 @@ async function deleteCoreTeamStore(id) {
   if (HAS_SUPABASE) {
     const rows = await supabaseRequest(
       `core_team_members?id=eq.${encodeURIComponent(id)}`,
-      { method: "DELETE" },
+      { method: "DELETE" }
     );
     return Array.isArray(rows) && rows.length > 0;
   }
@@ -687,7 +692,7 @@ async function deleteCoreTeamStore(id) {
     content.coreTeam = content.coreTeam || [];
     const before = content.coreTeam.length;
     content.coreTeam = content.coreTeam.filter(
-      (m) => String(m.id) !== String(id),
+      (m) => String(m.id) !== String(id)
     );
     if (content.coreTeam.length === before) return false;
     await writeContent(content);
@@ -775,13 +780,11 @@ app.get("/healthz", async (req, res) => {
       storage: HAS_SUPABASE ? "supabase" : "file",
     });
   } catch (e) {
-    res
-      .status(503)
-      .json({
-        ok: false,
-        error: e?.message || "Health check failed",
-        storage: HAS_SUPABASE ? "supabase" : "file",
-      });
+    res.status(503).json({
+      ok: false,
+      error: e?.message || "Health check failed",
+      storage: HAS_SUPABASE ? "supabase" : "file",
+    });
   }
 });
 
@@ -809,7 +812,10 @@ app.get("/api/content/activity-events/:activityKey", async (req, res) => {
   try {
     const activityKey = toSafeString(req.params.activityKey, 80);
     const { page, limit } = parsePagination(req.query);
-    const { events, total } = await listActivityEventsStore(activityKey, { page, limit });
+    const { events, total } = await listActivityEventsStore(activityKey, {
+      page,
+      limit,
+    });
     return res.json({
       events,
       pagination: {
@@ -837,11 +843,9 @@ app.post("/api/content/activity-events/:activityKey", async (req, res) => {
       password: body.password,
     };
     if (!(await canManageActivityEvent(auth))) {
-      return res
-        .status(401)
-        .json({
-          error: "Unauthorized. Core team details or password did not match.",
-        });
+      return res.status(401).json({
+        error: "Unauthorized. Core team details or password did not match.",
+      });
     }
 
     const event = {
@@ -887,11 +891,9 @@ app.delete(
         password: body.password,
       };
       if (!(await canManageActivityEvent(auth))) {
-        return res
-          .status(401)
-          .json({
-            error: "Unauthorized. Core team details or password did not match.",
-          });
+        return res.status(401).json({
+          error: "Unauthorized. Core team details or password did not match.",
+        });
       }
 
       const deleted = await deleteActivityEventStore(activityKey, eventId);
@@ -905,7 +907,7 @@ app.delete(
         .status(500)
         .json({ error: e?.message || "Unable to delete activity event" });
     }
-  },
+  }
 );
 
 app.post("/api/admin/login", authRateLimiter, adminAuthMiddleware.login);
@@ -1109,7 +1111,7 @@ async function handleForm(formType, req, res) {
       await sendWelcomeVerificationEmail(
         req.body.collegeEmail,
         req.body.fullName,
-        verifyUrl,
+        verifyUrl
       );
     } catch (emailErr) {
       console.error("[Form Handler] Failed to send welcome email:", emailErr);
@@ -1131,7 +1133,7 @@ async function handleForm(formType, req, res) {
     } catch (realtimeErr) {
       console.error(
         "[Form Handler] Failed to broadcast real-time updates:",
-        realtimeErr,
+        realtimeErr
       );
     }
 
@@ -1183,13 +1185,13 @@ function clearPasskeyAttempts(username, ip) {
 }
 
 app.post("/api/forms/membership", formRateLimiter, (req, res) =>
-  handleForm("membership", req, res),
+  handleForm("membership", req, res)
 );
 app.post("/api/forms/recruitment", formRateLimiter, (req, res) =>
-  handleForm("recruitment", req, res),
+  handleForm("recruitment", req, res)
 );
 app.post("/api/core-team/apply", formRateLimiter, (req, res) =>
-  handleForm("core_team", req, res),
+  handleForm("core_team", req, res)
 );
 // Real-time notification subscriber channels
 const pushSubscriptions = new Set();
@@ -1247,7 +1249,7 @@ app.post(
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }
-  },
+  }
 );
 
 app.post(
@@ -1262,7 +1264,7 @@ app.post(
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }
-  },
+  }
 );
 
 app.delete(
@@ -1280,7 +1282,7 @@ app.delete(
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }
-  },
+  }
 );
 
 // Delete all notifications for a user (or global)
@@ -1296,7 +1298,7 @@ app.delete(
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }
-  },
+  }
 );
 
 // Create notification (admin/testing)
@@ -1321,7 +1323,7 @@ app.post(
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }
-  },
+  }
 );
 
 // Portfolio System API Endpoints
@@ -1357,12 +1359,10 @@ app.put("/api/portfolio", portfolioRateLimiter, async (req, res) => {
         .json({ error: "Username must be at least 3 characters long" });
     }
     if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
-      return res
-        .status(400)
-        .json({
-          error:
-            "Username can only contain alphanumeric characters, underscores, and hyphens",
-        });
+      return res.status(400).json({
+        error:
+          "Username can only contain alphanumeric characters, underscores, and hyphens",
+      });
     }
     if (!passkey || passkey.length < 12) {
       return res
@@ -1373,17 +1373,15 @@ app.put("/api/portfolio", portfolioRateLimiter, async (req, res) => {
     // Check lockout before verifying
     const lockout = checkPasskeyLockout(username, ip);
     if (lockout) {
-      return res
-        .status(429)
-        .json({
-          error: "Too many failed passkey attempts. Please try again later.",
-        });
+      return res.status(429).json({
+        error: "Too many failed passkey attempts. Please try again later.",
+      });
     }
 
     // Verify ownership/passkey
     const isAuthorized = await portfolioRepository.verifyPasskey(
       username,
-      passkey,
+      passkey
     );
     if (!isAuthorized) {
       recordFailedPasskeyAttempt(username, ip);
@@ -1408,14 +1406,14 @@ app.put("/api/portfolio", portfolioRateLimiter, async (req, res) => {
 process.on("unhandledRejection", (reason) => {
   console.error(
     "[Process] Unhandled rejection:",
-    reason instanceof Error ? reason.message : reason,
+    reason instanceof Error ? reason.message : reason
   );
 });
 
 process.on("uncaughtException", (err) => {
   console.error(
     "[Process] Uncaught exception:",
-    err instanceof Error ? err.message : err,
+    err instanceof Error ? err.message : err
   );
   if (err && err.stack) console.error(err.stack);
 });
