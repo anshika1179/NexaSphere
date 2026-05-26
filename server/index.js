@@ -16,6 +16,7 @@ import analyticsRouter from "./routes/analytics.js";
 import { initializeSocketIO, emitToRoom, getRoom } from "./config/socket.js";
 import adminStreamRouter from "./routes/adminStream.js";
 import mentorshipRouter from "./routes/mentorship.js";
+import adaptiveRoadmapRouter from "./routes/adaptiveRoadmap.js";
 import { broadcastSSEEvent } from "./services/sseService.js";
 import rateLimit from "express-rate-limit";
 import {
@@ -87,6 +88,7 @@ function requestLogger(req, res, next) {
 app.use(requestLogger);
 app.use("/api", apiRateLimiter);
 app.use("/api/mentorship", mentorshipRouter);
+app.use("/api/adaptive-roadmap", adaptiveRoadmapRouter);
 
 const adminAuth = adminAuthMiddleware.requireAdmin;
 const adminEvents = new EventEmitter();
