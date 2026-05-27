@@ -44,6 +44,7 @@ function getWhatsappDisplay(raw) {
 // ── Modal Content ──
 function ModalContent({ member, onClose }) {
   const [activePopup, setActivePopup] = useState(null);
+  const [imgError, setImgError] = useState(false);
 
   useEffect(() => {
     const handler = (e) => {
