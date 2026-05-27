@@ -54,6 +54,13 @@ create table if not exists core_team_members (
   linkedin text,
   instagram text,
   photo_url text,
+  github_username text,
+  leetcode_username text,
+  cached_github_stats jsonb default '{}'::jsonb,
+  cached_leetcode_stats jsonb default '{}'::jsonb,
+  last_synced_at timestamptz,
+  sync_status text default 'pending',
+  sync_error_message text,
   created_at timestamptz not null default now()
 );
 

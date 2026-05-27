@@ -30,6 +30,7 @@
     "googleapis": "^140.0.1",
     "helmet": "^8.2.0",
     "morgan": "^1.10.0",
+    "node-cron": "^4.2.1",
     "node-pg-migrate": "^6.2.2",
     "nodemailer": "^8.0.7",
     "redoc-express": "^1.0.0",
