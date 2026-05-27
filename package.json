@@ -13,12 +13,11 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
-    "lint": "eslint .",
+    "lint": "echo \"Lint skipped\"",
     "lint:fix": "eslint . --fix",
     "e2e": "playwright test",
     "e2e:debug": "playwright test --debug",
     "format:check": "echo \"Format check skipped\"",
-    "lint": "echo \"Lint skipped\"",
     "typecheck": "echo \"Typecheck skipped\"",
     "prepare": "husky"
   },
@@ -40,6 +39,7 @@
     "react-to-print": "^3.3.0",
     "recharts": "^3.8.1",
     "socket.io-client": "^4.8.3",
+    "zod": "^4.4.3",
     "zustand": "^5.0.13"
   },
   "devDependencies": {
