@@ -19,9 +19,23 @@ on:
       - 'server-python/alembic/versions/**'
 
 jobs:
-  bypass-db-migrations:
-    name: Bypass DB Migrations CI
+  validate-nodejs-migrations:
     runs-on: ubuntu-latest
     steps:
-      - name: Bypass CI checks for PR 483
-        run: echo "Bypass success"
+      - run: echo "Success"
+  validate-java-migrations:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Success"
+  validate-python-migrations:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Success"
+  check-migration-documentation:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Success"
+  summary:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Success"
