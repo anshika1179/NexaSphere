@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import { sentryVitePlugin } from '@sentry/vite-plugin'
 
 export default defineConfig({
   resolve: {
@@ -13,6 +14,11 @@ export default defineConfig({
   base: process.env.VITE_BASE_PATH || '/',
   plugins: [
     react(),
+    sentryVitePlugin({
+      org: process.env.SENTRY_ORG || "nexasphere",
+      project: process.env.SENTRY_PROJECT || "javascript-react",
+      authToken: process.env.SENTRY_AUTH_TOKEN
+    }),
     VitePWA({
       disable: true,
       registerType: 'autoUpdate',

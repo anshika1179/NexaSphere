@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import apiClient from '../../utils/apiClient.js';
 import DashboardStats from '../../components/admin/analytics/DashboardStats';
 import UserGrowthChart from '../../components/admin/analytics/UserGrowthChart';
 import EventAttendanceChart from '../../components/admin/analytics/EventAttendanceChart';
@@ -22,47 +23,16 @@ export default function AdminPage({ onBack }) {
       const base = (import.meta?.env?.VITE_API_BASE || '').replace(/\/+$/, '');
       const headers = { 'Authorization': `Bearer ${authToken}` };
       
-      const [statsRes, growthRes, eventsRes] = await Promise.all([
-        fetch(`${base}/api/admin/analytics/stats`, { headers }),
-        fetch(`${base}/api/admin/analytics/growth`, { headers }),
-        fetch(`${base}/api/admin/analytics/events`, { headers })
-      ]);
-
-      if (statsRes.status === 401) {
-        setToken(null);
-        localStorage.removeItem('ns_admin_token');
-        throw new Error('Session expired. Please login again.');
-      }
-
-      if (!statsRes.ok || !growthRes.ok || !eventsRes.ok) {
-        throw new Error('Failed to fetch analytics data.');
-      }
-
       const [stats, growth, events] = await Promise.all([
-        statsRes.json(),
-        growthRes.json(),
-        eventsRes.json()
+        apiClient(`${base}/api/admin/analytics/stats`, { headers }),
+        apiClient(`${base}/api/admin/analytics/growth`, { headers }),
+        apiClient(`${base}/api/admin/analytics/events`, { headers })
       ]);
 
       setData({ stats, growth, events });
       setError(null);
     } catch (err) {
       setError(err.message);
-      // Fallback for dev environment if token is present but API fails
-      if (import.meta.env.DEV && authToken) {
-        console.warn('Using fallback mock data for analytics');
-        setData({
-          stats: { totalUsers: 1240, activeRegistrations: 85, upcomingEvents: 3, conversionRate: '12.5%' },
-          growth: Array.from({ length: 30 }, (_, i) => ({
-            date: new Date(Date.now() - (30 - i) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            registrations: Math.floor(Math.random() * 20) + i
-          })),
-          events: [
-            { name: 'KSS #153', capacity: 100, attendance: 92, waitlist: 15 },
-            { name: 'AI Workshop', capacity: 60, attendance: 58, waitlist: 20 }
-          ]
-        });
-      }
     } finally {
       setLoading(false);
     }
@@ -152,11 +122,11 @@ export default function AdminPage({ onBack }) {
         const payload = parsed.data;
 
         setData(prev => {
-          const currentStats = prev.stats || { totalUsers: 1240, activeRegistrations: 85, upcomingEvents: 3, conversionRate: '12.5%' };
+          const currentStats = prev.stats || { totalUsers: null, activeRegistrations: null, upcomingEvents: null, conversionRate: null };
           const nextStats = {
             ...currentStats,
-            totalUsers: (currentStats.totalUsers || 0) + 1,
-            activeRegistrations: (currentStats.activeRegistrations || 0) + 1
+            totalUsers: currentStats.totalUsers !== null ? currentStats.totalUsers + 1 : 1,
+            activeRegistrations: currentStats.activeRegistrations !== null ? currentStats.activeRegistrations + 1 : 1
           };
 
           const todayStr = new Date().toISOString().split('T')[0];
@@ -202,14 +172,11 @@ export default function AdminPage({ onBack }) {
     try {
       setLoading(true);
       const base = (import.meta?.env?.VITE_API_BASE || '').replace(/\/+$/, '');
-      const res = await fetch(`${base}/api/admin/login`, {
+      const result = await apiClient(`${base}/api/admin/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(loginData)
       });
-
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.error || 'Login failed');
 
       localStorage.setItem('ns_admin_token', result.token);
       setToken(result.token);
