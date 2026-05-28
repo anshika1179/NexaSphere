@@ -16,6 +16,14 @@ const rooms = {
 };
 const PROTECTED_ROOMS = ["admin-room"];
 
+// Tracks which socket IDs have joined which workspace rooms via join_room
+const workspaceRoomMembers = new Map();
+
+// Per-socket rate limiter for join_room events to prevent room enumeration
+const joinRoomAttempts = new Map();
+const MAX_JOIN_ROOM_ATTEMPTS = 20;
+const JOIN_ROOM_WINDOW_MS = 60000;
+
 /**
  * Parse Bearer token from auth header
  */
@@ -37,7 +45,7 @@ export function initializeSocketIO(httpServer) {
 
   io = new Server(httpServer, {
     cors: {
-      origin: allowedOrigins,
+      origin: process.env.FRONTEND_URL || 'http://localhost:5173',
       credentials: true,
     },
     reconnection: true,
@@ -87,12 +95,15 @@ export function _onConnection(socket) {
     socket.join("admin-room");
   }
 
+  // Keep track of identify operations to rate limit floods per-socket (Max 3 events per lifetime)
+  let identifyCount = 0;
+
   // Store connected user
   socket.on("user:identify", (userData) => {
     connectedUsers.set(socket.id, {
-      id: userData.userId,
-      email: userData.email,
-      socketId: socket.id,
+      id: String(userId),
+      email: String(email),
+      socketId: String(socket.id),
       connectedAt: new Date(),
     });
     logger.info("User identified", {
@@ -185,6 +196,25 @@ export function _onConnection(socket) {
       });
       return;
     }
+
+    // 3. Per-socket rate limit to prevent room enumeration
+    const now = Date.now();
+    let attempts = joinRoomAttempts.get(socket.id);
+    if (!attempts || now > attempts.resetAt) {
+      attempts = { count: 0, resetAt: now + JOIN_ROOM_WINDOW_MS };
+      joinRoomAttempts.set(socket.id, attempts);
+    }
+    attempts.count += 1;
+    if (attempts.count > MAX_JOIN_ROOM_ATTEMPTS) {
+      logger.warn('Socket join_room rate limit exceeded', { socketId: socket.id });
+      return;
+    }
+
+    // 4. Track room membership for event relay authorization
+    if (!workspaceRoomMembers.has(roomId)) {
+      workspaceRoomMembers.set(roomId, new Set());
+    }
+    workspaceRoomMembers.get(roomId).add(socket.id);
 
     socket.join(roomId);
     logger.info("User joined workspace room", { socketId: socket.id, roomId });
