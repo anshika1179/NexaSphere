@@ -85,8 +85,6 @@ const RoadmapBuilderInner: React.FC<RoadmapBuilderInnerProps> = ({
       title: "New Topic",
       description:
         "Click the edit button (✎) to add a description, prerequisites, and resource links.",
-      x: 350,
-      y: 100 + nodes.length * 60, // staggered visual stacking
       status: "Not Started",
       notes: "",
       resources: [],
