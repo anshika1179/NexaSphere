@@ -110,7 +110,6 @@ function EventsPageContent({ onBack, onEventClick, events = fallbackEvents }) {
           Where ideas come to life. Every event is a milestone in the NexaSphere
           journey.
         </p>
-      </div>
 
       <div
         className="container"
@@ -162,6 +161,30 @@ function EventsPageContent({ onBack, onEventClick, events = fallbackEvents }) {
             }}
           >
             Calendar View
+          </button>
+          <button
+            onClick={() => {
+              setRecommendationView(true);
+              setView('timeline');
+            }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 20px',
+              background: recommendationView ? 'var(--c1)' : 'transparent',
+              border: recommendationView ? 'none' : '1px solid var(--bdr)',
+              borderRadius: '100px',
+              color: recommendationView ? 'white' : 'var(--t2)',
+              cursor: 'pointer',
+              fontSize: '13px',
+              fontWeight: 500,
+              transition: 'all 0.2s ease',
+              fontFamily: "'Rajdhani', sans-serif"
+            }}
+          >
+            <DynamicIcon name="Sparkles" size={16} />
+            For You
           </button>
         </div>
       </div>
@@ -377,10 +400,8 @@ function EventsPageContent({ onBack, onEventClick, events = fallbackEvents }) {
                   </div>
                 </div>
               );
-            })
-          )}
+            })}
 
-          {safeEvents.length > 0 && (
             <div className="timeline-item">
               <div className="timeline-dot upcoming" />
               <div
@@ -401,19 +422,13 @@ function EventsPageContent({ onBack, onEventClick, events = fallbackEvents }) {
                 </p>
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        ) : (
+          <EventCalendarView events={sortedEvents} onEventClick={onEventClick} />
+        )}
       </div>
 
       <Footer />
     </div>
-  );
-}
-
-export default function EventsPage(props) {
-  return (
-    <ErrorBoundary>
-      <EventsPageContent {...props} />
-    </ErrorBoundary>
   );
 }
