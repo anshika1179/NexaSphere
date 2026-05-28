@@ -1,4 +1,4 @@
-exports.up = (pgm) => {
+export const up = (pgm) => {
   pgm.addColumns("core_team_members", {
     github_username: { type: "text" },
     leetcode_username: { type: "text" },
@@ -10,7 +10,7 @@ exports.up = (pgm) => {
   });
 };
 
-exports.down = (pgm) => {
+export const down = (pgm) => {
   pgm.dropColumns("core_team_members", [
     "github_username",
     "leetcode_username",
