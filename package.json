@@ -34,6 +34,7 @@
     "@tensorflow/tfjs": "^4.22.0",
     "framer-motion": "^12.40.0",
     "lucide-react": "^0.460.0",
+    "pdfjs-dist": "^5.7.284",
     "pino": "^10.3.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
