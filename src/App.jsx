@@ -348,8 +348,8 @@ function Cursor() {
   );
 }
 
+/* ── Thin router shell — no hooks here, so early return is safe ── */
 export default function App() {
-  /* ── Certificate verify route detection ── */
   const verifyCertId = (() => {
     const path = window.location.pathname;
     const m = path.match(/^\/verify\/([A-Za-z0-9_%-]+)/);
@@ -367,6 +367,12 @@ export default function App() {
       />
     );
   }
+
+  return <MainApp />;
+}
+
+/* ── Main app — all hooks live here, always called unconditionally ── */
+function MainApp() {
 
   const [cinDone, setCinDone] = useState(false);
   const [activeTab, setActiveTab] = useState("Home");
@@ -714,8 +720,24 @@ export default function App() {
   const nh = mobile ? MNH : DNH;
   const cur = page?.activityKey ? activityPages[page.activityKey] : null;
 
+  /* ── SW update prompt state ────────────────────────────────────────────── */
+  const [swUpdateFn, setSwUpdateFn] = useState(null);
+
+  useEffect(() => {
+    const handleSwUpdate = (e) => {
+      if (e.detail?.updateSW) setSwUpdateFn(() => e.detail.updateSW);
+    };
+    window.addEventListener('nexasphere:sw-update', handleSwUpdate);
+    return () => window.removeEventListener('nexasphere:sw-update', handleSwUpdate);
+  }, []);
+
   return (
     <BookmarkProvider>
+      {/* ── PWA Components ── */}
+      <OfflineBanner />
+      <InstallPrompt />
+      {swUpdateFn && <UpdatePrompt updateSW={swUpdateFn} />}
+
       {/* Chatbot – kept at very top */}
       <Chatbot />
 
