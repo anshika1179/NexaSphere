@@ -706,6 +706,20 @@ async function deleteCoreTeamStore(id) {
 async function appendToSupabaseForms(formType, payload) {
   if (!HAS_SUPABASE) return false;
   try {
+    const [row] = await supabaseRequest(`forms_${formType}`, {
+      method: "POST",
+      body: [payload],
+    });
+    return !!row;
+  } catch (e) {
+    console.error(`[Supabase Form] Error saving ${formType}:`, e.message);
+    return false;
+  }
+}
+
+// REST Endpoints
+app.get('/healthz', async (req, res) => {
+  try {
     const list = await eventsService.listEvents({ page: 1, limit: 1 });
     res.json({
       ok: true,
