@@ -3,18 +3,18 @@
  * Handles WebSocket connections for real-time updates
  */
 
-import { Server } from 'socket.io';
-import logger from '../utils/logger.js';
-import { getAdminSession } from '../repositories/adminSessionsRepository.js';
+import { Server } from "socket.io";
+import logger from "../utils/logger.js";
+import { getAdminSession } from "../repositories/adminSessionsRepository.js";
 
 let io = null;
 const connectedUsers = new Map();
 const rooms = {
-  admin: 'admin-room',
-  notifications: 'notifications-room',
-  events: 'events-room',
+  admin: "admin-room",
+  notifications: "notifications-room",
+  events: "events-room",
 };
-const PROTECTED_ROOMS = ['admin-room'];
+const PROTECTED_ROOMS = ["admin-room"];
 
 // Tracks which socket IDs have joined which workspace rooms via join_room
 const workspaceRoomMembers = new Map();
@@ -28,7 +28,7 @@ const JOIN_ROOM_WINDOW_MS = 60000;
  * Parse Bearer token from auth header
  */
 function parseBearer(authHeader) {
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return '';
+  if (!authHeader || !authHeader.startsWith("Bearer ")) return "";
   return authHeader.slice(7).trim();
 }
 
@@ -37,6 +37,12 @@ function parseBearer(authHeader) {
  * @param {Object} httpServer - HTTP server instance
  */
 export function initializeSocketIO(httpServer) {
+  const allowedOrigins = process.env.CORS_ORIGIN
+    ? process.env.CORS_ORIGIN.split(",")
+        .map((origin) => origin.trim())
+        .filter(Boolean)
+    : [process.env.FRONTEND_URL || "http://localhost:5173"];
+
   io = new Server(httpServer, {
     cors: {
       origin: process.env.FRONTEND_URL || 'http://localhost:5173',
@@ -50,7 +56,9 @@ export function initializeSocketIO(httpServer) {
 
   // Connection auth middleware — checks handshake auth token
   io.use(async (socket, next) => {
-    const token = socket.handshake.auth?.token || parseBearer(socket.handshake.headers?.authorization);
+    const token =
+      socket.handshake.auth?.token ||
+      parseBearer(socket.handshake.headers?.authorization);
     if (token) {
       try {
         const session = await getAdminSession(token);
@@ -65,7 +73,7 @@ export function initializeSocketIO(httpServer) {
     next();
   });
 
-  io.on('connection', (socket) => {
+  io.on("connection", (socket) => {
     _onConnection(socket);
   });
 
@@ -77,111 +85,115 @@ export function initializeSocketIO(httpServer) {
  * @param {Object} socket - Socket.io socket instance
  */
 export function _onConnection(socket) {
-  logger.info('User connected', { socketId: socket.id, admin: !!socket.adminAuthenticated });
+  logger.info("User connected", {
+    socketId: socket.id,
+    admin: !!socket.adminAuthenticated,
+  });
 
   // Auto-join authenticated admin sockets to admin room
   if (socket.adminAuthenticated) {
-    socket.join('admin-room');
+    socket.join("admin-room");
   }
 
   // Keep track of identify operations to rate limit floods per-socket (Max 3 events per lifetime)
   let identifyCount = 0;
 
   // Store connected user
-  socket.on('user:identify', (userData) => {
-    // 1. Enforce Per-Socket Identification Rate Limiting
-    identifyCount++;
-    if (identifyCount > 3) {
-      logger.warn('Socket identification flood detected, forcing disconnect', { socketId: socket.id });
-      socket.disconnect(true);
-      return;
-    }
-
-    // 2. Defensive Payload Structure & Type Validation
-    if (!userData || typeof userData !== 'object') {
-      logger.warn('Invalid user identification payload type rejected', { socketId: socket.id });
-      return;
-    }
-
-    const { userId, email } = userData;
-
-    // Validate fields exist and are strictly primitive strings
-    if (typeof userId !== 'string' || typeof email !== 'string') {
-      logger.warn('User identification payload fields must be primitive strings', { socketId: socket.id });
-      return;
-    }
-
-    // 3. Strict Size Bounds (128 char for IDs, 256 for Email)
-    if (userId.length > 128 || email.length > 256) {
-      logger.warn('Oversized user identification payload values rejected', { socketId: socket.id });
-      return;
-    }
-
-    // 4. Safe Deep Copy (Persist sanitized primitives)
+  socket.on("user:identify", (userData) => {
     connectedUsers.set(socket.id, {
       id: String(userId),
       email: String(email),
       socketId: String(socket.id),
       connectedAt: new Date(),
     });
-    
-    logger.info('User identified successfully', { userId: String(userId), socketId: socket.id });
+    logger.info("User identified", {
+      userId: userData.userId,
+      socketId: socket.id,
+    });
   });
 
   // Approved public-facing rooms that standard users can join
-  const ALLOWED_PUBLIC_ROOMS = ['notifications-room', 'events-room', 'admin-room'];
+  const ALLOWED_PUBLIC_ROOMS = [
+    "notifications-room",
+    "events-room",
+    "admin-room",
+  ];
   const MAX_ROOMS_PER_SOCKET = 10;
 
   // Join notification room
-  socket.on('room:join', (roomName) => {
+  socket.on("room:join", (roomName) => {
     // 1. Primitive Type Validation
-    if (typeof roomName !== 'string') {
-      logger.warn('Socket room:join payload must be a string', { socketId: socket.id });
+    if (typeof roomName !== "string") {
+      logger.warn("Socket room:join payload must be a string", {
+        socketId: socket.id,
+      });
       return;
     }
 
+    // Support mentorship review rooms prefixed with 'review-'
+    const isReviewRoom = roomName.startsWith("review-");
+
     // 2. Strict Allowlist Match
-    if (!ALLOWED_PUBLIC_ROOMS.includes(roomName)) {
-      logger.warn('Unapproved room:join attempt rejected', { socketId: socket.id, room: roomName });
-      return socket.emit('room:join:error', { error: 'Invalid or unauthorized room name' });
+    if (!isReviewRoom && !ALLOWED_PUBLIC_ROOMS.includes(roomName)) {
+      logger.warn("Unapproved room:join attempt rejected", {
+        socketId: socket.id,
+        room: roomName,
+      });
+      return socket.emit("room:join:error", {
+        error: "Invalid or unauthorized room name",
+      });
     }
 
     // 3. Authorization Check for Protected Rooms
     if (PROTECTED_ROOMS.includes(roomName) && !socket.adminAuthenticated) {
-      logger.warn('Unauthorized room join attempt', { socketId: socket.id, room: roomName });
-      return socket.emit('room:join:error', { error: 'Authentication required to join this room' });
+      logger.warn("Unauthorized room join attempt", {
+        socketId: socket.id,
+        room: roomName,
+      });
+      return socket.emit("room:join:error", {
+        error: "Authentication required to join this room",
+      });
     }
 
     // 4. Per-Socket Bounded Active Rooms Cap (Set size check)
-    const joinedCount = socket.rooms ? (socket.rooms.size - 1) : 0;
+    const joinedCount = socket.rooms ? socket.rooms.size - 1 : 0;
     if (joinedCount >= MAX_ROOMS_PER_SOCKET) {
-      logger.warn('Socket joined rooms limit exceeded', { socketId: socket.id });
-      return socket.emit('room:join:error', { error: 'Maximum room subscription limit reached' });
+      logger.warn("Socket joined rooms limit exceeded", {
+        socketId: socket.id,
+      });
+      return socket.emit("room:join:error", {
+        error: "Maximum room subscription limit reached",
+      });
     }
 
     socket.join(roomName);
-    logger.info('User joined room', { socketId: socket.id, room: roomName });
+    logger.info("User joined room", { socketId: socket.id, room: roomName });
   });
 
   // Leave room
-  socket.on('room:leave', (roomName) => {
-    if (typeof roomName !== 'string') return;
+  socket.on("room:leave", (roomName) => {
+    if (typeof roomName !== "string") return;
     socket.leave(roomName);
-    logger.info('User left room', { socketId: socket.id, room: roomName });
+    logger.info("User left room", { socketId: socket.id, room: roomName });
   });
 
   // Join workspace room (Issue #205)
-  socket.on('join_room', (roomId, user) => {
+  socket.on("join_room", (roomId, user) => {
     // 1. Primitive Type & Structure Regex Validation (UUID/ObjectId/Workspace Name)
-    if (typeof roomId !== 'string' || !/^[a-zA-Z0-9\-_]{1,100}$/.test(roomId)) {
-      logger.warn('Malformed workspace roomId join attempt rejected', { socketId: socket.id, roomId });
+    if (typeof roomId !== "string" || !/^[a-zA-Z0-9\-_]{1,100}$/.test(roomId)) {
+      logger.warn("Malformed workspace roomId join attempt rejected", {
+        socketId: socket.id,
+        roomId,
+      });
       return;
     }
 
     // 2. Per-Socket Bounded Active Rooms Cap
-    const joinedCount = socket.rooms ? (socket.rooms.size - 1) : 0;
+    const joinedCount = socket.rooms ? socket.rooms.size - 1 : 0;
     if (joinedCount >= MAX_ROOMS_PER_SOCKET) {
-      logger.warn('Socket workspace joined rooms limit exceeded', { socketId: socket.id });
+      logger.warn("Socket workspace joined rooms limit exceeded", {
+        socketId: socket.id,
+      });
       return;
     }
 
@@ -205,94 +217,171 @@ export function _onConnection(socket) {
     workspaceRoomMembers.get(roomId).add(socket.id);
 
     socket.join(roomId);
-    logger.info('User joined workspace room', { socketId: socket.id, roomId });
+    logger.info("User joined workspace room", { socketId: socket.id, roomId });
 
     // Sanitize user details to prevent reference leaks / massive nested objects
-    const sanitizedUser = user && typeof user === 'object' ? {
-      name: typeof user.name === 'string' ? user.name.slice(0, 100) : 'Anonymous',
-      email: typeof user.email === 'string' ? user.email.slice(0, 150) : '',
-    } : {};
+    const sanitizedUser =
+      user && typeof user === "object"
+        ? {
+            name:
+              typeof user.name === "string"
+                ? user.name.slice(0, 100)
+                : "Anonymous",
+            email:
+              typeof user.email === "string" ? user.email.slice(0, 150) : "",
+          }
+        : {};
 
-    socket.to(roomId).emit('user_joined', { socketId: socket.id, user: sanitizedUser, timestamp: Date.now() });
+    socket
+      .to(roomId)
+      .emit("user_joined", {
+        socketId: socket.id,
+        user: sanitizedUser,
+        timestamp: Date.now(),
+      });
   });
 
   // Leave workspace room
-  socket.on('leave_room', (roomId) => {
-    if (typeof roomId !== 'string') return;
-    _removeWorkspaceMember(roomId, socket.id);
+  socket.on("leave_room", (roomId) => {
+    if (typeof roomId !== "string") return;
     socket.leave(roomId);
-    logger.info('User left workspace room', { socketId: socket.id, roomId });
-    socket.to(roomId).emit('user_left', { socketId: socket.id });
+    logger.info("User left workspace room", { socketId: socket.id, roomId });
+    socket.to(roomId).emit("user_left", { socketId: socket.id });
   });
 
-  // Workspace synchronization events — only relay if sender is a room member
-  socket.on('workspace_update', (data) => {
+  // Workspace synchronization events
+  socket.on("workspace_update", (data) => {
     const { roomId, ...payload } = data;
-    if (roomId && _isWorkspaceMember(roomId, socket.id)) {
-      socket.to(roomId).emit('workspace_update', payload);
+    if (roomId) socket.to(roomId).emit("workspace_update", payload);
+  });
+
+  socket.on("document_change", (data) => {
+    const { roomId, ...payload } = data;
+    if (roomId) socket.to(roomId).emit("document_change", payload);
+  });
+
+  socket.on("cursor_moved", (data) => {
+    const { roomId, ...payload } = data;
+    if (roomId)
+      socket
+        .to(roomId)
+        .emit("cursor_moved", { socketId: socket.id, ...payload });
+  });
+
+  socket.on("typing_start", (data) => {
+    const { roomId, ...payload } = data;
+    if (roomId)
+      socket
+        .to(roomId)
+        .emit("typing_start", { socketId: socket.id, ...payload });
+  });
+
+  socket.on("typing_stop", (data) => {
+    const { roomId, ...payload } = data;
+    if (roomId)
+      socket
+        .to(roomId)
+        .emit("typing_stop", { socketId: socket.id, ...payload });
+  });
+
+  // Mentorship Review Events
+  socket.on("review:join_room", (roomId, user) => {
+    if (
+      typeof roomId !== "string" ||
+      !/^review-[a-zA-Z0-9\-_]{1,100}$/.test(roomId)
+    )
+      return;
+
+    socket.join(roomId);
+
+    const sanitizedUser =
+      user && typeof user === "object"
+        ? {
+            id: user.id || socket.id,
+            name:
+              typeof user.name === "string"
+                ? user.name.slice(0, 100)
+                : "Anonymous",
+            color: typeof user.color === "string" ? user.color : "#000",
+          }
+        : {};
+
+    socket
+      .to(roomId)
+      .emit("review:user_joined", { socketId: socket.id, user: sanitizedUser });
+  });
+
+  socket.on("review:annotation_add", (data) => {
+    const { roomId, ...payload } = data;
+    if (roomId && typeof roomId === "string") {
+      // payload expects { line, text, author, timestamp, id }
+      socket
+        .to(roomId)
+        .emit("review:annotation_added", { socketId: socket.id, ...payload });
     }
   });
 
-  socket.on('document_change', (data) => {
-    const { roomId, ...payload } = data;
-    if (roomId && _isWorkspaceMember(roomId, socket.id)) {
-      socket.to(roomId).emit('document_change', payload);
+  socket.on("review:annotation_resolve", (data) => {
+    const { roomId, annotationId } = data;
+    if (roomId && annotationId) {
+      socket.to(roomId).emit("review:annotation_resolved", { annotationId });
     }
   });
 
-  socket.on('cursor_moved', (data) => {
-    const { roomId, ...payload } = data;
-    if (roomId && _isWorkspaceMember(roomId, socket.id)) {
-      socket.to(roomId).emit('cursor_moved', { socketId: socket.id, ...payload });
-    }
-  });
-
-  socket.on('typing_start', (data) => {
-    const { roomId, ...payload } = data;
-    if (roomId && _isWorkspaceMember(roomId, socket.id)) {
-      socket.to(roomId).emit('typing_start', { socketId: socket.id, ...payload });
-    }
-  });
-
-  socket.on('typing_stop', (data) => {
-    const { roomId, ...payload } = data;
-    if (roomId && _isWorkspaceMember(roomId, socket.id)) {
-      socket.to(roomId).emit('typing_stop', { socketId: socket.id, ...payload });
+  socket.on("review:cursor_sync", (data) => {
+    const { roomId, line, col } = data;
+    if (roomId) {
+      socket
+        .to(roomId)
+        .emit("review:cursor_synced", { socketId: socket.id, line, col });
     }
   });
 
   // Authenticate socket for admin rooms using admin token
-  socket.on('admin:authenticate', async ({ token } = {}) => {
+  socket.on("admin:authenticate", async ({ token } = {}) => {
     if (!token) {
-      return socket.emit('admin:authenticated', { success: false, error: 'Token is required' });
+      return socket.emit("admin:authenticated", {
+        success: false,
+        error: "Token is required",
+      });
     }
     try {
       const session = await getAdminSession(token);
       if (!session) {
-        return socket.emit('admin:authenticated', { success: false, error: 'Invalid or expired token' });
+        return socket.emit("admin:authenticated", {
+          success: false,
+          error: "Invalid or expired token",
+        });
       }
       socket.adminSession = session;
       socket.adminAuthenticated = true;
-      socket.join('admin-room');
-      logger.info('Admin authenticated via socket event', { socketId: socket.id, username: session.username });
-      socket.emit('admin:authenticated', { success: true });
+      socket.join("admin-room");
+      logger.info("Admin authenticated via socket event", {
+        socketId: socket.id,
+        username: session.username,
+      });
+      socket.emit("admin:authenticated", { success: true });
     } catch (e) {
-      logger.error('Admin authentication error', { error: e.message, socketId: socket.id });
-      socket.emit('admin:authenticated', { success: false, error: 'Authentication failed' });
+      logger.error("Admin authentication error", {
+        error: e.message,
+        socketId: socket.id,
+      });
+      socket.emit("admin:authenticated", {
+        success: false,
+        error: "Authentication failed",
+      });
     }
   });
 
   // Handle disconnection
-  socket.on('disconnect', () => {
+  socket.on("disconnect", () => {
     connectedUsers.delete(socket.id);
-    _cleanupWorkspaceMembership(socket.id);
-    joinRoomAttempts.delete(socket.id);
-    logger.info('User disconnected', { socketId: socket.id });
+    logger.info("User disconnected", { socketId: socket.id });
   });
 
   // Error handling
-  socket.on('error', (error) => {
-    logger.error('Socket error', { error: error.message, socketId: socket.id });
+  socket.on("error", (error) => {
+    logger.error("Socket error", { error: error.message, socketId: socket.id });
   });
 }
 
@@ -301,7 +390,7 @@ export function _onConnection(socket) {
  */
 export function getIO() {
   if (!io) {
-    throw new Error('Socket.IO not initialized');
+    throw new Error("Socket.IO not initialized");
   }
   return io;
 }
@@ -312,7 +401,7 @@ export function getIO() {
 export function broadcastEvent(eventName, data) {
   if (!io) return;
   io.emit(eventName, data);
-  logger.debug('Broadcast event', { event: eventName });
+  logger.debug("Broadcast event", { event: eventName });
 }
 
 /**
@@ -321,7 +410,7 @@ export function broadcastEvent(eventName, data) {
 export function emitToRoom(roomName, eventName, data) {
   if (!io) return;
   io.to(roomName).emit(eventName, data);
-  logger.debug('Emit to room', { room: roomName, event: eventName });
+  logger.debug("Emit to room", { room: roomName, event: eventName });
 }
 
 /**
@@ -329,10 +418,10 @@ export function emitToRoom(roomName, eventName, data) {
  */
 export function emitToUser(userId, eventName, data) {
   if (!io) return;
-  const user = Array.from(connectedUsers.values()).find(u => u.id === userId);
+  const user = Array.from(connectedUsers.values()).find((u) => u.id === userId);
   if (user) {
     io.to(user.socketId).emit(eventName, data);
-    logger.debug('Emit to user', { userId, event: eventName });
+    logger.debug("Emit to user", { userId, event: eventName });
   }
 }
 
@@ -361,34 +450,12 @@ export function _clearConnectedUsers() {
   connectedUsers.clear();
 }
 
-export function _clearWorkspaceRoomMembers() {
-  workspaceRoomMembers.clear();
-}
-
-export function _clearJoinRoomAttempts() {
-  joinRoomAttempts.clear();
-}
-
-function _isWorkspaceMember(roomId, socketId) {
-  const members = workspaceRoomMembers.get(roomId);
-  return members && members.has(socketId);
-}
-
-function _removeWorkspaceMember(roomId, socketId) {
-  const members = workspaceRoomMembers.get(roomId);
-  if (members) {
-    members.delete(socketId);
-    if (members.size === 0) workspaceRoomMembers.delete(roomId);
-  }
-}
-
-function _cleanupWorkspaceMembership(socketId) {
-  for (const [roomId, members] of workspaceRoomMembers) {
-    if (members.has(socketId)) {
-      members.delete(socketId);
-      if (members.size === 0) workspaceRoomMembers.delete(roomId);
-    }
-  }
-}
-
-export default { initializeSocketIO, getIO, broadcastEvent, emitToRoom, emitToUser, _clearConnectedUsers, _clearWorkspaceRoomMembers, _clearJoinRoomAttempts, _onConnection };
+export default {
+  initializeSocketIO,
+  getIO,
+  broadcastEvent,
+  emitToRoom,
+  emitToUser,
+  _clearConnectedUsers,
+  _onConnection,
+};
