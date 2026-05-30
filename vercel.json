@@ -28,11 +28,6 @@
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
       ]
     }
-  ],
-  "env": {
-    "VITE_API_BASE": "@vite_api_base",
-    "VITE_ADMIN_DASHBOARD_URL": "@vite_admin_dashboard_url",
-    "VITE_VAPID_PUBLIC_KEY": "@vite_vapid_public_key",
-    "VITE_SENTRY_DSN": "@vite_sentry_dsn"
-  }
+  ]
 }
+
