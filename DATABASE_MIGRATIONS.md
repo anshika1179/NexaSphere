@@ -27,6 +27,8 @@ NexaSphere uses a multi-stack architecture with three database backends, each wi
 | `V1__Create_Initial_Schema.sql` | Baseline schema — admin sessions, events, activity events, core team, form submissions, recommendation engine tables |
 | `V2__Seed_Recommendation_Data.sql` | Seed data for recommendation engine (profiles, events, participation history) |
 | `V3__Extend_Event_Metadata.sql` | Extended events table with KSS metadata fields (category, dates, capacity, location) and dynamic gradient colors |
+| `V4__Create_Certificate_System.sql` | Certificate templates, participants, and issued certificates tables |
+| `V5__Add_Recruitment_Submissions.sql` | Dedicated table for core team recruitment applications with status tracking |
 
 ### Python Server (`server-python/alembic/versions/`)
 

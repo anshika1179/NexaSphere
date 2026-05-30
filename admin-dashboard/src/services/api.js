@@ -519,6 +519,21 @@ export const api = {
     getAll: () => fetchWithAuth('/api/admin/membership'),
   },
 
+  recruitment: {
+    getAll: () => fetchWithAuth('/api/admin/submissions/recruitment'),
+    updateStatus: async (id, status) => {
+      const result = await fetchWithAuth(`/api/admin/submissions/recruitment/${id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+      });
+      eventEmitter.emit(EVENTS.NOTIFY, {
+        type: 'success',
+        message: `Application status updated to ${status}`,
+      });
+      return result;
+    },
+  },
+
   certificates: {
     getTemplates: () => fetchWithAuth('/api/admin/certificates/templates'),
     createTemplate: async (template) => {
