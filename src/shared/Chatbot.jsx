@@ -117,12 +117,17 @@ const Chatbot = () => {
   return (
     <div className="ns-chatbot-wrapper">
       {!isOpen ? (
-        <button className="chat-trigger-btn" onClick={() => setIsOpen(true)}>
+        <button 
+          className="chat-trigger-btn" 
+          onClick={() => setIsOpen(true)}
+          aria-expanded={isOpen}
+          aria-controls="chatbot-window"
+        >
           <div className="pulse-ring"></div>
           💬
         </button>
       ) : (
-        <div className="chat-window-glass">
+        <div id="chatbot-window" className="chat-window-glass">
           <PromptHistorySidebar
             isOpen={showSidebar}
             onSelectPrompt={handleSelectPrompt}
@@ -135,6 +140,8 @@ const Chatbot = () => {
                 className="history-toggle-btn"
                 onClick={() => setShowSidebar(!showSidebar)}
                 title="Toggle History"
+                aria-expanded={showSidebar}
+                aria-controls="prompt-history-sidebar"
               >
                 📋
               </button>

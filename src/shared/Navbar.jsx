@@ -162,28 +162,41 @@ export default function Navbar({
             <div className="ns-nav-divider" />
             <span className="ns-nav-brand">NexaSphere</span>
           </div>
-        </div>
 
-        <div className="ns-nav-actions">
-          <NotificationBell />
+          <div className="ns-nav-actions">
+            <NotificationBell />
 
-          <BookmarkToggle onToggle={onToggleBookmarks} />
+            <BookmarkToggle onToggle={onToggleBookmarks} />
 
-          <div className="ns-nav-ctas">
+            <div className="ns-nav-ctas">
+              <button
+                className="btn btn-sm btn-outline ns-nav-cta-btn"
+                onClick={onJoin}
+                aria-label="Join as Member"
+              >
+                Join
+              </button>
+
+              <button
+                className="btn btn-sm btn-primary ns-nav-cta-btn"
+                onClick={onApply}
+                aria-label="Apply for Core Team"
+              >
+                Apply
+              </button>
+            </div>
+
+            <ThemeToggle />
+
             <button
-              className="btn btn-sm btn-outline ns-nav-cta-btn"
-              onClick={onJoin}
-              aria-label="Join as Member"
+              className={`ns-nav-menu-toggle${menuOpen ? " open" : ""}`}
+              onClick={() => compact && setMenuOpen((open) => !open)}
+              aria-label="Toggle navigation menu"
+              aria-expanded={menuOpen}
             >
-              Join
-            </button>
-
-            <button
-              className="btn btn-sm btn-primary ns-nav-cta-btn"
-              onClick={onApply}
-              aria-label="Apply for Core Team"
-            >
-              Apply
+              <span />
+              <span />
+              <span />
             </button>
           </div>
 
