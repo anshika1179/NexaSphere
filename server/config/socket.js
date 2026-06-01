@@ -31,26 +31,26 @@ const MAX_PENDING_PACKETS = parseInt(process.env.WS_MAX_PENDING_PACKETS) || 100;
 const SLOW_CONSUMER_TIMEOUT_MS = parseInt(process.env.WS_SLOW_CONSUMER_TIMEOUT_MS) || 5000;
 
 const EVENT_POLICIES = {
-  'cursor_moved': {
-    throttleMs: 50,       // Max 20 updates per second
+  cursor_moved: {
+    throttleMs: 50, // Max 20 updates per second
     coalesce: true,
   },
-  'workspace_update': {
-    throttleMs: 100,      // Max 10 updates per second
+  workspace_update: {
+    throttleMs: 100, // Max 10 updates per second
     coalesce: true,
   },
-  'document_change': {
+  document_change: {
     throttleMs: 100,
     coalesce: true,
   },
   'admin:new-registration': {
-    throttleMs: 200,      // Max 5 updates per second
+    throttleMs: 200, // Max 5 updates per second
     coalesce: true,
   },
   'registration-confirmed': {
     throttleMs: 500,
     coalesce: true,
-  }
+  },
 };
 
 /**
@@ -67,7 +67,7 @@ function parseSocketPacket(packetStr) {
     if (Array.isArray(arr) && arr.length >= 1) {
       return {
         event: arr[0],
-        payload: arr[1]
+        payload: arr[1],
       };
     }
   } catch (e) {
@@ -119,7 +119,7 @@ export function applyBackpressureProtection(socket) {
       logger.warn('WebSocket backpressure limit exceeded. Force disconnecting slow consumer.', {
         socketId: socket.id,
         pendingCount,
-        maxAllowed: MAX_PENDING_PACKETS
+        maxAllowed: MAX_PENDING_PACKETS,
       });
       socket.disconnect(true);
       return;
@@ -133,7 +133,7 @@ export function applyBackpressureProtection(socket) {
       logger.warn('WebSocket consumer queue stalled. Force disconnecting slow consumer.', {
         socketId: socket.id,
         pendingCount,
-        queuedDurationMs: now - socket.data.firstQueuedTime
+        queuedDurationMs: now - socket.data.firstQueuedTime,
       });
       socket.disconnect(true);
       return;
@@ -149,11 +149,15 @@ export function applyBackpressureProtection(socket) {
 
         if (policy.coalesce && now - lastEmit < policy.throttleMs) {
           const qualifier = getEventQualifier(event, payload);
-          
+
           if (socket.conn.writeBuffer) {
-            const existingIdx = socket.conn.writeBuffer.findIndex(item => {
+            const existingIdx = socket.conn.writeBuffer.findIndex((item) => {
               const itemParsed = parseSocketPacket(item.data);
-              return itemParsed && itemParsed.event === event && getEventQualifier(event, itemParsed.payload) === qualifier;
+              return (
+                itemParsed &&
+                itemParsed.event === event &&
+                getEventQualifier(event, itemParsed.payload) === qualifier
+              );
             });
 
             if (existingIdx !== -1) {
@@ -211,11 +215,14 @@ export function initializeSocketIO(httpServer) {
     reconnectionDelay: 1000,
     reconnectionDelayMax: 5000,
     reconnectionAttempts: 5,
+    pingTimeout: 20000,
+    pingInterval: 10000,
   });
 
   // Connection auth middleware — checks handshake auth token
   io.use(async (socket, next) => {
-    const token = socket.handshake.auth?.token || parseBearer(socket.handshake.headers?.authorization);
+    const token =
+      socket.handshake.auth?.token || parseBearer(socket.handshake.headers?.authorization);
     if (token) {
       try {
         const session = await getAdminSession(token);
@@ -260,7 +267,9 @@ export function _onConnection(socket) {
     // 1. Enforce Per-Socket Identification Rate Limiting
     identifyCount++;
     if (identifyCount > 3) {
-      logger.warn('Socket identification flood detected, forcing disconnect', { socketId: socket.id });
+      logger.warn('Socket identification flood detected, forcing disconnect', {
+        socketId: socket.id,
+      });
       socket.disconnect(true);
       return;
     }
@@ -275,7 +284,9 @@ export function _onConnection(socket) {
 
     // Validate fields exist and are strictly primitive strings
     if (typeof userId !== 'string' || typeof email !== 'string') {
-      logger.warn('User identification payload fields must be primitive strings', { socketId: socket.id });
+      logger.warn('User identification payload fields must be primitive strings', {
+        socketId: socket.id,
+      });
       return;
     }
 
@@ -292,7 +303,7 @@ export function _onConnection(socket) {
       socketId: String(socket.id),
       connectedAt: new Date(),
     });
-    
+
     logger.info('User identified successfully', { userId: String(userId), socketId: socket.id });
   });
 
@@ -321,7 +332,7 @@ export function _onConnection(socket) {
     }
 
     // 4. Per-Socket Bounded Active Rooms Cap (Set size check)
-    const joinedCount = socket.rooms ? (socket.rooms.size - 1) : 0;
+    const joinedCount = socket.rooms ? socket.rooms.size - 1 : 0;
     if (joinedCount >= MAX_ROOMS_PER_SOCKET) {
       logger.warn('Socket joined rooms limit exceeded', { socketId: socket.id });
       return socket.emit('room:join:error', { error: 'Maximum room subscription limit reached' });
@@ -342,12 +353,15 @@ export function _onConnection(socket) {
   socket.on('join_room', (roomId, user) => {
     // 1. Primitive Type & Structure Regex Validation (UUID/ObjectId/Workspace Name)
     if (typeof roomId !== 'string' || !/^[a-zA-Z0-9\-_]{1,100}$/.test(roomId)) {
-      logger.warn('Malformed workspace roomId join attempt rejected', { socketId: socket.id, roomId });
+      logger.warn('Malformed workspace roomId join attempt rejected', {
+        socketId: socket.id,
+        roomId,
+      });
       return;
     }
 
     // 2. Per-Socket Bounded Active Rooms Cap
-    const joinedCount = socket.rooms ? (socket.rooms.size - 1) : 0;
+    const joinedCount = socket.rooms ? socket.rooms.size - 1 : 0;
     if (joinedCount >= MAX_ROOMS_PER_SOCKET) {
       logger.warn('Socket workspace joined rooms limit exceeded', { socketId: socket.id });
       return;
@@ -376,12 +390,17 @@ export function _onConnection(socket) {
     logger.info('User joined workspace room', { socketId: socket.id, roomId });
 
     // Sanitize user details to prevent reference leaks / massive nested objects
-    const sanitizedUser = user && typeof user === 'object' ? {
-      name: typeof user.name === 'string' ? user.name.slice(0, 100) : 'Anonymous',
-      email: typeof user.email === 'string' ? user.email.slice(0, 150) : '',
-    } : {};
+    const sanitizedUser =
+      user && typeof user === 'object'
+        ? {
+            name: typeof user.name === 'string' ? user.name.slice(0, 100) : 'Anonymous',
+            email: typeof user.email === 'string' ? user.email.slice(0, 150) : '',
+          }
+        : {};
 
-    socket.to(roomId).emit('user_joined', { socketId: socket.id, user: sanitizedUser, timestamp: Date.now() });
+    socket
+      .to(roomId)
+      .emit('user_joined', { socketId: socket.id, user: sanitizedUser, timestamp: Date.now() });
   });
 
   // Leave workspace room
@@ -437,19 +456,30 @@ export function _onConnection(socket) {
     try {
       const session = await getAdminSession(token);
       if (!session) {
-        return socket.emit('admin:authenticated', { success: false, error: 'Invalid or expired token' });
+        return socket.emit('admin:authenticated', {
+          success: false,
+          error: 'Invalid or expired token',
+        });
       }
       socket.adminSession = session;
       socket.adminAuthenticated = true;
       socket.join('admin-room');
-      logger.info('Admin authenticated via socket event', { socketId: socket.id, username: session.username });
+      logger.info('Admin authenticated via socket event', {
+        socketId: socket.id,
+        username: session.username,
+      });
       socket.emit('admin:authenticated', { success: true });
     } catch (e) {
       logger.error('Admin authentication error', { error: e.message, socketId: socket.id });
       socket.emit('admin:authenticated', { success: false, error: 'Authentication failed' });
     }
   });
-
+  // Handles abrupt disconnects (crash, sleep, network drop)
+  socket.on('disconnecting', (reason) => {
+    logger.info('Socket disconnecting', { socketId: socket.id, reason });
+    connectedUsers.delete(socket.id);
+    _cleanupWorkspaceMembership(socket.id);
+  });
   // Handle disconnection
   socket.on('disconnect', () => {
     connectedUsers.delete(socket.id);
@@ -504,7 +534,7 @@ export function emitToRoom(roomName, eventName, data) {
  */
 export function emitToUser(userId, eventName, data) {
   if (!io) return;
-  const user = Array.from(connectedUsers.values()).find(u => u.id === userId);
+  const user = Array.from(connectedUsers.values()).find((u) => u.id === userId);
   if (user) {
     io.to(user.socketId).emit(eventName, data);
     logger.debug('Emit to user', { userId, event: eventName });
@@ -566,4 +596,16 @@ function _cleanupWorkspaceMembership(socketId) {
   }
 }
 
-export default { initializeSocketIO, getIO, broadcastEvent, emitToRoom, emitToUser, _clearConnectedUsers, _clearWorkspaceRoomMembers, _clearJoinRoomAttempts, _onConnection, applyBackpressureProtection, getQueuePressureMetrics };
+export default {
+  initializeSocketIO,
+  getIO,
+  broadcastEvent,
+  emitToRoom,
+  emitToUser,
+  _clearConnectedUsers,
+  _clearWorkspaceRoomMembers,
+  _clearJoinRoomAttempts,
+  _onConnection,
+  applyBackpressureProtection,
+  getQueuePressureMetrics,
+};
