@@ -6,14 +6,17 @@ import org.nexasphere.repository.EventRepository;
 import org.nexasphere.util.Sanitizer;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.*;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/api/admin/events")
-@SuppressWarnings("null")
+@Tag(name = "Events Management", description = "Endpoints for managing NexaSphere events")
 public class EventsController {
 
     private final EventRepository repo;
@@ -38,16 +41,73 @@ public class EventsController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<EventEntity> update(@PathVariable String id, @Valid @RequestBody EventEntity event) {
+    public ResponseEntity<EventEntity> update(
+            @PathVariable @NonNull String id,
+            @Valid @RequestBody EventEntity event) {
+
         return repo.findById(id).map(existing -> {
-            event.setId(id);
-            event.setName(sanitizer.clean(event.getName()));
-            return ResponseEntity.ok(repo.save(event));
-        }).orElse(ResponseEntity.notFound().build());
+
+            // merge only non-null fields that exist on EventEntity
+            if (event.getName() != null) {
+                existing.setName(sanitizer.clean(event.getName()));
+            }
+
+            if (event.getDescription() != null) {
+                existing.setDescription(event.getDescription());
+            }
+
+            if (event.getDateText() != null) {
+                existing.setDateText(event.getDateText());
+            }
+
+            if (event.getStatus() != null) {
+                existing.setStatus(event.getStatus());
+            }
+
+            if (event.getIcon() != null) {
+                existing.setIcon(event.getIcon());
+            }
+
+            existing.setHasDetailPage(event.isHasDetailPage());
+
+            if (event.getStartDate() != null) {
+                existing.setStartDate(event.getStartDate());
+            }
+
+            if (event.getEndDate() != null) {
+                existing.setEndDate(event.getEndDate());
+            }
+
+            if (event.getCategory() != null) {
+                existing.setCategory(event.getCategory());
+            }
+
+            if (event.getLocation() != null) {
+                existing.setLocation(event.getLocation());
+            }
+
+            if (event.getCapacity() != null) {
+                existing.setCapacity(event.getCapacity());
+            }
+
+            if (event.getTags() != null && !event.getTags().isEmpty()) {
+                existing.setTags(event.getTags());
+            }
+
+            if (event.getGradientColors() != null) {
+                existing.setGradientColors(event.getGradientColors());
+            }
+
+            // save merged entity
+            EventEntity saved = Objects.requireNonNull(
+                    repo.save(existing), "saved event must not be null");
+            return ResponseEntity.ok(saved);
+
+        }).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable String id) {
+    public ResponseEntity<Void> delete(@PathVariable @NonNull String id) {
         if (!repo.existsById(id)) return ResponseEntity.notFound().build();
         repo.deleteById(id);
         return ResponseEntity.noContent().build();

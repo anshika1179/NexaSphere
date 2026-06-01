@@ -6,13 +6,14 @@ import org.nexasphere.repository.ActivityEventRepository;
 import org.nexasphere.util.Sanitizer;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/api/admin/activity-events")
-@SuppressWarnings("null")
 public class ActivityEventsController {
 
     private final ActivityEventRepository repo;
@@ -24,25 +25,35 @@ public class ActivityEventsController {
     }
 
     @GetMapping("/{activityKey}")
-    public List<ActivityEventEntity> getByActivity(@PathVariable String activityKey) {
+    public List<ActivityEventEntity> getByActivity(@PathVariable @NonNull String activityKey) {
         return repo.findByActivityKey(activityKey);
     }
 
     @PostMapping("/{activityKey}")
     public ResponseEntity<ActivityEventEntity> create(
-            @PathVariable String activityKey,
+            @PathVariable @NonNull String activityKey,
             @Valid @RequestBody ActivityEventEntity event) {
         event.setId(null);
         event.setActivityKey(activityKey);
         event.setName(sanitizer.clean(event.getName()));
-        return ResponseEntity.status(HttpStatus.CREATED).body(repo.save(event));
+        ActivityEventEntity saved = Objects.requireNonNull(
+                repo.save(event), "saved entity must not be null");
+        return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 
     @DeleteMapping("/{activityKey}/{id}")
-    public ResponseEntity<Void> delete(@PathVariable String activityKey, @PathVariable Long id) {
-        var found = repo.findById(id).filter(e -> e.getActivityKey().equals(activityKey));
-        if (found.isEmpty()) return ResponseEntity.notFound().build();
-        repo.delete(found.get());
-        return ResponseEntity.noContent().build();
+    public ResponseEntity<Void> delete(
+            @PathVariable @NonNull String activityKey,
+            @PathVariable @NonNull Long id) {
+        boolean deleted = repo.findById(id)
+                .filter(e -> activityKey.equals(e.getActivityKey()))
+                .map(e -> {
+                    repo.delete(e);
+                    return true;
+                })
+                .orElse(false);
+        return deleted
+                ? ResponseEntity.noContent().build()
+                : ResponseEntity.notFound().build();
     }
 }

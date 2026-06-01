@@ -97,6 +97,39 @@ const ICONS = {
       <line x1="10" y1="9" x2="8" y2="9" />
     </>
   ),
+  UserPlus: (
+    <>
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <line x1="19" y1="8" x2="19" y2="14" />
+      <line x1="22" y1="11" x2="16" y2="11" />
+    </>
+  ),
+  Award: (
+    <>
+      <circle cx="12" cy="8" r="6" />
+      <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11" />
+    </>
+  ),
+  ArrowLeft: (
+    <>
+      <path d="M19 12H5" />
+      <path d="m12 5-7 7 7 7" />
+    </>
+  ),
+  Globe: (
+    <>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M2 12h20" />
+      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+    </>
+  ),
+  Megaphone: (
+    <>
+      <path d="m3 11 18-5v12L3 13v-2Z" />
+      <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
+    </>
+  ),
 };
 
 export function AdminIcon({ name, size = 18, className = '', ...props }) {

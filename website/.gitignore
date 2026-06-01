@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.env
+.env.local
+.env.*.local
+.env.production
+.env.staging
+*.local
+.vercel
+coverage/
+test-results/
+playwright-report/

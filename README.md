@@ -1,727 +1,242 @@
-# 🌟 NexaSphere
+# NexaSphere
 
-## Official Community Platform — GL Bajaj Group of Institutions, Mathura
+> The official tech community platform for GL Bajaj Group of Institutions, Mathura.
+> Built by students, for students — featuring events, activities, team management, portfolios, and more.
 
-> **Connecting students with opportunities** across Tech and Non-Tech domains through an integrated digital ecosystem
-<br/>
+[![CI](https://github.com/Ayushh-Sharmaa/NexaSphere/actions/workflows/ci.yml/badge.svg)](https://github.com/Ayushh-Sharmaa/NexaSphere/actions/workflows/ci.yml)
+[![License](https://img.shields.io/github/license/Ayushh-Sharmaa/NexaSphere)](LICENSE)
 
-<img src="./public/assets/HomePage.png" alt="NexaSphere homepage preview" />
-<br/>
+## ✨ Stack
 
----
+| Layer | Technology |
+|---|---|
+| **Website (Frontend)** | React 18 + Vite 5 + React Router v6 |
+| **Admin Dashboard** | React 18 + Vite 5 |
+| **Backend API** | Node.js 20 + Express 4 (ESM) |
+| **Database** | PostgreSQL via Supabase (JSON file fallback for offline) |
+| **Real-time** | Socket.IO |
+| **Emails** | Nodemailer / Resend / SendGrid |
+| **Auth** | Session-based admin auth with timing-safe comparison |
+| **Deployment** | Frontend → Vercel · Backend → Render · Docker supported |
 
-## 🔗 Quick Access
-
-<div align="center">
-
-| Resource               | Link                                                                           |
-| ---------------------- | ------------------------------------------------------------------------------ |
-| 🌐 **Live Website**    | [nexasphere-glbajaj.vercel.app](https://nexasphere-glbajaj.vercel.app/) |
-| 🔑 **Admin Dashboard** | [admin-nexasphere.vercel.app](https://admin-nexasphere.vercel.app/) |
-| 📧 **Contact**         | nexasphere@glbajajgroup.org                                                    |
-| 💼 **Institution**     | GL Bajaj Group of Institutions, Mathura                                        |
-
-</div>
-
-<br/>
-
----
-
-## 🚀 Technology Stack
-
-Modern, scalable architecture built with industry-leading technologies:
-
-<br/>
-
-<table>
-  <tr>
-    <td align="center" width="50%">
-      <h3>Frontend Layer</h3>
-      <p>⚡ React 18 + Vite 5</p>
-      <p>🎨 Vanilla CSS with Advanced Motion</p>
-      <p>📦 Vercel Hosting</p>
-    </td>
-    <td align="center" width="50%">
-      <h3>Backend Layer</h3>
-      <p>☕ Java 17 + Spring Boot 3</p>
-      <p>🐍 Python 3.11 + FastAPI</p>
-      <p>🚀 Railway / Render / Fly.io</p>
-    </td>
-  </tr>
-  <tr>
-    <td align="center">
-      <h3>Database</h3>
-      <p>🗄️ PostgreSQL (Production)</p>
-      <p>💾 H2 (Development)</p>
-      <p>📊 Supabase Integration</p>
-    </td>
-    <td align="center">
-      <h3>Services</h3>
-      <p>📝 Google Sheets Integration</p>
-      <p>🔐 JWT Authentication</p>
-      <p>🔄 Real-time Updates</p>
-    </td>
-  </tr>
-</table>
-
-<br/>
-
----
-
-## 📁 Project Architecture
+## 📁 Project Structure
 
 ```
-nexasphere/
-│
-├── 📂 src/                          ← Main Frontend Application
-│   ├── pages/                       ← Page Components
-│   │   ├── home/
-│   │   ├── about/
-│   │   ├── activities/
-│   │   ├── events/
-│   │   ├── team/
-│   │   ├── contact/
-│   │   ├── membership/
-│   │   ├── recruitment/
-│   │   └── admin/
-│   ├── shared/                      ← Reusable Components & Utilities
-│   ├── services/                    ← API Client Layer
-│   ├── styles/                      ← Global Stylesheets
-│   ├── data/                        ← Static Content & Configuration
-│   └── App.jsx, main.jsx
-│
-├── 📂 admin-dashboard/              ← Standalone Admin Application
+NexaSphere/
+├── website/              # Main public website (React + Vite)
 │   ├── src/
-│   │   ├── pages/                   ← Admin Pages
-│   │   ├── components/              ← Admin Components
-│   │   ├── services/                ← API Integration
-│   │   └── hooks/                   ← Custom React Hooks
-│   └── package.json
-│
-├── 📂 server-java/                  ← REST API Backend
-│   ├── src/main/java/org/nexasphere/
-│   │   ├── controller/              ← REST Endpoints
-│   │   ├── service/                 ← Business Logic
-│   │   ├── model/                   ← JPA Entities
-│   │   ├── repository/              ← Data Access Layer
-│   │   └── config/                  ← Spring Configuration
-│   ├── pom.xml
-│   └── README.md
-│
-├── 📂 server-python/                ← Forms Microservice
-│   ├── routers/                     ← API Routes
-│   ├── services/                    ← Business Logic
-│   ├── models/                      ← Data Models
-│   ├── requirements.txt
-│   └── README.md
-│
-├── Configuration Files
-│   ├── package.json
+│   │   ├── assets/       # Images, fonts, icons
+│   │   ├── components/   # Reusable UI components
+│   │   ├── context/      # React context providers
+│   │   ├── data/         # Static data (events, activities)
+│   │   ├── hooks/        # Custom React hooks
+│   │   ├── pages/        # Route-level page components
+│   │   ├── shared/       # Shared UI primitives (Navbar, Footer, etc.)
+│   │   ├── styles/       # Global CSS + theme tokens
+│   │   └── utils/        # API client, helpers, PWA utils
+│   ├── .env.example      # Required environment variables
 │   ├── vite.config.js
-│   ├── vercel.json
-│   └── index.html
+│   └── vercel.json       # Website-specific Vercel overrides
 │
-└── README.md                        ← This File
+├── admin-dashboard/      # Admin UI (React + Vite, separate deploy)
+│   ├── src/
+│   ├── .env.example
+│   └── vite.config.js
+│
+├── server/               # Express.js REST API + Socket.IO
+│   ├── config/           # DB, socket, and service config
+│   ├── controllers/      # Route handler functions
+│   ├── middleware/        # Auth, rate limiting, error handling
+│   ├── migrations/        # Database migration files
+│   ├── models/           # Data models
+│   ├── repositories/     # DB access layer (repository pattern)
+│   ├── routes/           # Express route definitions
+│   ├── services/         # Business logic
+│   ├── utils/            # Helpers (Sentry, email, etc.)
+│   ├── validators/       # Zod schema validators
+│   ├── index.js          # Entry point
+│   ├── .env.example      # All required environment variables
+│   ├── Dockerfile        # Production Docker image
+│   └── vercel.json       # Serverless function adapter (optional)
+│
+├── server-python/        # FastAPI ML/AI microservice (optional)
+├── server-java/          # Spring Boot alternative (experimental)
+├── google-apps-script/   # Google Sheets / Forms integration scripts
+├── docs/                 # Documentation
+├── e2e/                  # Playwright end-to-end tests
+│
+├── vercel.json           # Root Vercel config (deploys website/)
+├── render.yaml           # Render config (deploys server/)
+├── docker-compose.yml    # Local dev with Docker
+├── package.json          # Monorepo root (npm workspaces)
+└── .github/workflows/    # CI/CD GitHub Actions
 ```
 
-<br/>
+## 🚀 Getting Started
 
----
+### Prerequisites
 
-## 🛠️ Local Development Setup
+- **Node.js** `>= 20.0.0` — [Download](https://nodejs.org/)
+- **npm** `>= 9.0.0` (included with Node 20)
 
-### ✅ Prerequisites
-
-Make sure you have these installed on your system:
-
-<br/>
-
-| Tool           | Version | Purpose                                   |
-| -------------- | ------- | ----------------------------------------- |
-| **Node.js**    | 20+     | Frontend development & package management |
-| **Java JDK**   | 17+     | Java backend compilation & execution      |
-| **Maven**      | 3.8+    | Java project build tool                   |
-| **Python**     | 3.11+   | Forms service runtime                     |
-| **PostgreSQL** | Latest  | Database (optional for development)       |
-
-<br/>
-
-### 🎯 Step 1: Frontend Setup
-
-<br/>
-
-**Clone and Install:**
+### 1. Clone & Install
 
 ```bash
-cd nexasphere
+git clone https://github.com/Ayushh-Sharmaa/NexaSphere.git
+cd NexaSphere
+
+# Install all workspace dependencies
 npm install
-npm run dev
 ```
 
-<br/>
-
-**▶️ Access:** http://localhost:5173
-
-<br/>
-
-**📋 Environment Variables (.env.local):**
+### 2. Configure Environment Variables
 
 ```bash
-VITE_API_BASE=http://localhost:8080
+# Website
+cp website/.env.example website/.env.local
+
+# Admin Dashboard
+cp admin-dashboard/.env.example admin-dashboard/.env.local
+
+# Backend API
+cp server/.env.example server/.env
 ```
 
-<br/>
+Then open each `.env` file and fill in your values. At minimum for local dev:
 
----
+**`website/.env.local`:**
+```env
+VITE_API_BASE=http://localhost:8787
+```
 
-### ☕ Step 2: Java Backend Setup
+**`server/.env`:**
+```env
+PORT=8787
+NODE_ENV=development
+CORS_ORIGIN=http://localhost:5175,http://localhost:5001
+ADMIN_USERNAME=your-admin
+ADMIN_PASSWORD=YourPass123!
+ADMIN_EVENT_PASSWORD=EventPass456!
+```
 
-<br/>
-
-**Build and Run:**
+### 3. Run Development Servers
 
 ```bash
-cd server-java
-mvn clean install
-mvn spring-boot:run
+# Website only (port 5175)
+npm run dev:website
+
+# Admin Dashboard only (port 5001)
+npm run dev:admin
+
+# Backend API only (port 8787)
+npm run dev:server
+
+# All three concurrently (recommended)
+npm run dev:all
 ```
 
-<br/>
+| Service | URL |
+|---|---|
+| Website | http://localhost:5175 |
+| Admin Dashboard | http://localhost:5001 |
+| Backend API | http://localhost:8787 |
+| API Health Check | http://localhost:8787/health |
 
-**▶️ Access:** http://localhost:8080
+### 4. Running Without a Backend
 
-<br/>
+The website works in **offline mode** when `VITE_API_BASE` is empty. All data comes from localStorage / static JSON files. This is how it runs on Vercel without a backend.
 
-**📋 Environment Variables (application.properties):**
-
-```properties
-# Admin Credentials
-ADMIN_EMAIL=nexasphere@glbajajgroup.org
-ADMIN_PASSWORD=Admin@123
-
-# CORS Configuration
-CORS_ORIGIN=http://localhost:5173,https://nexasphere-glbajaj.vercel.app,https://admin-nexasphere.vercel.app
-
-# Database (Development - H2)
-DB_URL=jdbc:h2:mem:nexaspheredb
-DB_DRIVER=org.h2.Driver
-DB_USER=sa
-DB_PASS=
-```
-
-<br/>
-
-**For PostgreSQL (Production):**
-
-```properties
-DB_URL=jdbc:postgresql://localhost:5432/nexasphere
-DB_DRIVER=org.postgresql.Driver
-DB_USER=postgres
-DB_PASS=yourpassword
-```
-
-<br/>
-
----
-
-### 🐍 Step 3: Python Forms Service
-
-<br/>
-
-**Setup Virtual Environment & Run:**
+## 🏗️ Building for Production
 
 ```bash
-cd server-python
+# Build website
+npm run build:website    # output → website/dist/
 
-# Create virtual environment
-python -m venv venv
+# Build admin dashboard
+npm run build:admin      # output → admin-dashboard/dist/
 
-# Activate (choose based on your OS)
-source venv/bin/activate          # macOS/Linux
-# OR
-venv\Scripts\activate             # Windows
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Run development server
-uvicorn main:app --reload --port 8000
+# Build both
+npm run build:all
 ```
-
-<br/>
-
-**▶️ Access:** http://localhost:8000
-
-**📋 Interactive Docs:** http://localhost:8000/docs
-
-<br/>
-
-**📋 Environment Variables (.env):**
-
-```bash
-# Google Cloud Authentication
-GOOGLE_PROJECT_ID=your-project-id
-GOOGLE_SERVICE_ACCOUNT_EMAIL=your-sa@project.iam.gserviceaccount.com
-GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
-GOOGLE_SHEET_ID=your-sheet-id
-
-# Supabase Configuration
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-
-# CORS & Server
-CORS_ORIGIN=http://localhost:5173,https://nexasphere-glbajaj.vercel.app,https://admin-nexasphere.vercel.app
-```
-
-<br/>
-
----
-
-### 👨‍💼 Step 4: Admin Dashboard
-
-<br/>
-
-**Install and Run:**
-
-```bash
-cd admin-dashboard
-npm install
-npm run dev
-```
-
-<br/>
-
-**▶️ Access:** http://localhost:5174
-
-<br/>
-
-**📋 Environment Variables (.env.local):**
-
-```bash
-VITE_API_BASE=http://localhost:8080
-```
-
-<br/>
-
----
-
-## 🌐 API Documentation
-
-### 🔓 Public Endpoints (No Authentication)
-
-<br/>
-
-| Method | Endpoint                             | Description                    |
-| ------ | ------------------------------------ | ------------------------------ |
-| `GET`  | `/api/content/events`                | Fetch all community events     |
-| `GET`  | `/api/content/activity-events/{key}` | Get events by activity type    |
-| `GET`  | `/api/content/core-team`             | List all core team members     |
-| `POST` | `/api/forms/membership`              | Submit membership application  |
-| `POST` | `/api/forms/recruitment`             | Submit recruitment application |
-| `POST` | `/api/core-team/apply`               | Submit core team application   |
-
-<br/>
-
-### 🔐 Protected Endpoints (Admin Only)
-
-<br/>
-
-| Method   | Endpoint                    | Description             |
-| -------- | --------------------------- | ----------------------- |
-| `POST`   | `/api/admin/events`         | Create new event        |
-| `PUT`    | `/api/admin/events/{id}`    | Update existing event   |
-| `DELETE` | `/api/admin/events/{id}`    | Delete event            |
-| `POST`   | `/api/admin/core-team`      | Create core team member |
-| `PUT`    | `/api/admin/core-team/{id}` | Update core team member |
-| `DELETE` | `/api/admin/core-team/{id}` | Delete core team member |
-
-<br/>
-
----
-
-## 👨‍💻 Admin Dashboard Features
-
-<br/>
-
-<table>
-  <tr>
-    <td width="50%">
-      <h3>📊 Event Management</h3>
-      <ul>
-        <li>✓ Create new events</li>
-        <li>✓ Edit event details</li>
-        <li>✓ Delete events</li>
-        <li>✓ Real-time updates</li>
-      </ul>
-    </td>
-    <td width="50%">
-      <h3>🎯 Activity Events</h3>
-      <ul>
-        <li>✓ Manage 8 activity categories</li>
-        <li>✓ Hackathon, Codathon, Ideathon</li>
-        <li>✓ Workshops & Insight Sessions</li>
-        <li>✓ Open Source Day & Tech Debate</li>
-      </ul>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%">
-      <h3>👥 Team Management</h3>
-      <ul>
-        <li>✓ Add core team members</li>
-        <li>✓ Edit member profiles</li>
-        <li>✓ Manage roles & contacts</li>
-        <li>✓ Remove members</li>
-      </ul>
-    </td>
-    <td width="50%">
-      <h3>⚡ Real-time Updates</h3>
-      <ul>
-        <li>✓ Event-driven architecture</li>
-        <li>✓ No page reloads</li>
-        <li>✓ Instant UI synchronization</li>
-        <li>✓ Seamless user experience</li>
-      </ul>
-    </td>
-  </tr>
-</table>
-
-**🔑 Admin Credentials:**
-
-- **Email:** nexasphere@glbajajgroup.org
-- **Password:** Admin@123
-
-<br/>
-
----
-## 🚀 Production Deployment
-
-### 🌐 Frontend Deployment (Vercel)
-
-<br/>
-
-1. **Connect Repository:** Link GitHub repo to Vercel
-2. **Configure Build:**
-   - Build Command: `npm run build`
-   - Output Directory: `dist`
-3. **Set Environment Variables:**
-   - `VITE_API_BASE=https://your-api-url.railway.app`
-4. **Deploy** and monitor
-
-<br/>
-
-**📍 Live URL:** https://nexasphere-glbajaj.vercel.app
-
-<br/>
-
----
-
-### 👨‍💼 Admin Dashboard Deployment (Vercel)
-
-<br/>
-
-1. **Create Separate Vercel Project** from `admin-dashboard/` folder
-2. **Configure (same as frontend):**
-   - Build: `npm run build`
-   - Output: `dist`
-   - Env: `VITE_API_BASE=https://your-api-url.railway.app`
-
-<br/>
-
-**📍 Live URL:** https://admin-nexasphere.vercel.app
-
-<br/>
-
----
-
-### ☕ Java Backend Deployment (Railway)
-
-<br/>
-
-**Installation:**
-
-```bash
-npm i -g @railway/cli
-railway login
-cd server-java
-railway init
-railway up
-```
-
-<br/>
-
-**📋 Production Environment Variables:**
-
-```
-ADMIN_EMAIL=nexasphere@glbajajgroup.org
-ADMIN_PASSWORD=Admin@123
-CORS_ORIGIN=https://nexasphere-glbajaj.vercel.app,https://admin-nexasphere.vercel.app
-DB_URL=jdbc:postgresql://[provided-by-railway]:5432/railway
-DB_DRIVER=org.postgresql.Driver
-DB_USER=[provided-by-railway]
-DB_PASS=[provided-by-railway]
-```
-
-<br/>
-
----
-
-### 🐍 Python Service Deployment
-
-<br/>
-
-**Railway Deployment:**
-
-```bash
-cd server-python
-railway init
-railway up
-```
-
-<br/>
-
-**Environment Variables:** (Same as local `.env`)
-
-<br/>
-
----
-
-<br/>
-
-## 🗄️ Database Configuration
-
-### 💾 Development (H2 In-Memory)
-
-Auto-configured on startup:
-
-- ✓ Tables created automatically
-- ✓ Seed data loaded
-- ✓ No manual setup required
-
-<br/>
-
-### 🗄️ Production (PostgreSQL)
-
-<br/>
-
-**Create Database:**
-
-```sql
-CREATE DATABASE nexasphere;
-```
-
-<br/>
-
-**Setup:**
-
-- Spring Boot creates tables via JPA
-- Seed data loads from `data.sql`
-- Ready for production use
-
-<br/>
-
-**Supabase Tables:**
-
-```sql
-CREATE TABLE membership_forms (
-  id SERIAL PRIMARY KEY,
-  name VARCHAR(100) NOT NULL,
-  email VARCHAR(255) NOT NULL,
-  whatsapp VARCHAR(10) NOT NULL,
-  year VARCHAR(20) NOT NULL,
-  branch VARCHAR(100) NOT NULL,
-  section VARCHAR(1) NOT NULL,
-  reason TEXT,
-  created_at TIMESTAMP DEFAULT NOW()
-);
-
-CREATE TABLE recruitment_forms (
-  id SERIAL PRIMARY KEY,
-  name VARCHAR(100) NOT NULL,
-  email VARCHAR(255) NOT NULL,
-  whatsapp VARCHAR(10) NOT NULL,
-  year VARCHAR(20) NOT NULL,
-  branch VARCHAR(100) NOT NULL,
-  section VARCHAR(1) NOT NULL,
-  reason TEXT,
-  created_at TIMESTAMP DEFAULT NOW()
-);
-
-CREATE TABLE core_team_applications (
-  id SERIAL PRIMARY KEY,
-  name VARCHAR(100) NOT NULL,
-  email VARCHAR(255) NOT NULL,
-  whatsapp VARCHAR(10) NOT NULL,
-  year VARCHAR(20) NOT NULL,
-  branch VARCHAR(100) NOT NULL,
-  section VARCHAR(1) NOT NULL,
-  reason TEXT,
-  created_at TIMESTAMP DEFAULT NOW()
-);
-```
-
-<br/>
-
----
 
 ## 🧪 Testing
 
-<br/>
-
-### React Frontend
-
 ```bash
-npm run test
-npm run test:coverage
+# Website unit tests (Vitest)
+npm test
+
+# Server unit tests (Node test runner)
+npm run test:server
+
+# End-to-end tests (Playwright)
+npx playwright test
 ```
 
-<br/>
+## 🚢 Deployment
 
-### Java Backend
+### Frontend → Vercel (Automatic)
+
+The repo is pre-configured for Vercel deployment:
+
+1. Connect the repo to Vercel
+2. Vercel auto-detects `vercel.json` at the root
+3. Set environment variables in the Vercel dashboard:
+   - `VITE_API_BASE` → your Render API URL (e.g. `https://nexasphere-api.onrender.com`)
+   - `VITE_ADMIN_DASHBOARD_URL` → your admin dashboard URL
+   - `VITE_VAPID_PUBLIC_KEY` → your VAPID key (for push notifications)
+4. Deploy! The `website/dist` folder is served with SPA fallback.
+
+### Backend API → Render (via `render.yaml`)
+
+1. Connect the repo to Render
+2. Render auto-detects `render.yaml`
+3. Set all `sync: false` environment variables in the Render dashboard (see `server/.env.example` for the full list)
+4. The `/health` endpoint is used for health checks
+
+### Backend API → Docker
 
 ```bash
-mvn test
-mvn verify
+# Build the image
+cd server
+docker build -t nexasphere-api .
+
+# Run locally
+docker run -p 8787:8787 --env-file .env nexasphere-api
 ```
 
-<br/>
-
-### Python Service
+### Full Stack with Docker Compose
 
 ```bash
-pytest
-pytest --cov
+# Start all services
+docker-compose up --build
+
+# Stop
+docker-compose down
 ```
 
-<br/>
+## 🔑 Environment Variables Reference
 
----
+| Variable | Where | Description |
+|---|---|---|
+| `VITE_API_BASE` | `website/.env.local` | Backend API base URL |
+| `VITE_ADMIN_DASHBOARD_URL` | `website/.env.local` | Admin dashboard URL (footer link) |
+| `PORT` | `server/.env` | Server port (default: 8787) |
+| `CORS_ORIGIN` | `server/.env` | Comma-separated allowed origins |
+| `DATABASE_URL` | `server/.env` | PostgreSQL connection string |
+| `SUPABASE_URL` | `server/.env` | Supabase project URL |
+| `SUPABASE_SERVICE_ROLE_KEY` | `server/.env` | Supabase service key |
+| `ADMIN_USERNAME` | `server/.env` | Admin login username |
+| `ADMIN_PASSWORD` | `server/.env` | Admin login password (≥12 chars) |
+| `ADMIN_EVENT_PASSWORD` | `server/.env` | Password for posting activity events |
 
-## 📖 Documentation
-
-For detailed information about specific components, visit:
-
-<br/>
-
-- **[server-java/README.md](server-java/README.md)** — Java backend build, setup, and deployment
-- **[server-python/README.md](server-python/README.md)** — Python backend setup and integrations
-- **[admin-dashboard/README.md](admin-dashboard/README.md)** — Admin dashboard installation
-
-<br/>
-
----
+See `server/.env.example` and `website/.env.example` for the complete list.
 
 ## 🤝 Contributing
 
-This is an **internal project** for the NexaSphere core team.
+See [CONTRIBUTING.md](docs/community/CONTRIBUTING.md) for guidelines.
 
-<br/>
+This project is part of **GSSoC 2026** — check the open issues for tasks labelled `good first issue`.
 
-### Workflow
+## 📄 License
 
-1. Clone the repository
-2. Create feature branch: `git checkout -b feature/your-feature`
-3. Make changes with quality standards
-4. Test thoroughly before submission
-5. Submit pull request for review
-
-<br/>
-
-### 📋 Code Quality Standards
-
-- ✓ No `console.log` statements
-- ✓ Functions under 40 lines
-- ✓ Consistent naming conventions
-- ✓ Zero unused imports
-- ✓ Meaningful commit messages
-- ✓ Comprehensive documentation
-
-<br/>
-
----
-
-## 📋 Project Checklist
-
-<br/>
-
-### Documentation ✅
-
-- [x] Complete API documentation
-- [x] Environment variable guides
-- [x] Setup instructions for all services
-- [x] Deployment procedures
-- [x] Database configuration
-
-<br/>
-
-### Infrastructure 🚀
-
-- [x] Frontend hosting (Vercel)
-- [x] API backend available
-- [x] Database configured
-- [x] Admin dashboard deployed
-- [x] CORS properly configured
-
-<br/>
-
-### Future Improvements 🎯
-
-- [ ] Architecture diagrams
-- [ ] Video tutorials
-- [ ] API Swagger documentation
-- [ ] Performance monitoring
-- [ ] Security audit logs
-
-<br/>
-
----
-## 📝 License & Usage
-
-**Internal Project** — GL Bajaj NexaSphere Core Team  
-All rights reserved. Not for external distribution.
-
-<br/>
-
----
-
-## 📧 Contact & Support
-
-<br/>
-
-<table>
-  <tr>
-    <th>Resource</th>
-    <th>Details</th>
-  </tr>
-  <tr>
-    <td>📧 Email</td>
-    <td>nexasphere@glbajajgroup.org</td>
-  </tr>
-  <tr>
-    <td>🏢 Institution</td>
-    <td>GL Bajaj Group of Institutions, Mathura</td>
-  </tr>
-  <tr>
-    <td>🌐 Website</td>
-    <td>nexasphere-glbajaj.vercel.app</td>
-  </tr>
-  <tr>
-    <td>👨‍💼 Admin Panel</td>
-    <td>admin-nexasphere.vercel.app</td>
-  </tr>
-</table>
-
-<br/>
-
----
-
-<br/>
-
-<div align="center">
-
-### Made with ❤️ by NexaSphere Core Team
-
-**Version 1.0** | Last Updated: May 2026
-
-</div>
-
+[MIT](LICENSE) © NexaSphere Core Team

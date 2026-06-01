@@ -1,0 +1,57 @@
+services:
+  # ── NexaSphere API (Node.js / Express) ────────────────────────────────────
+  - type: web
+    name: nexasphere-api
+    runtime: node
+    rootDir: server
+    buildCommand: npm install --prefer-offline --no-audit --no-fund
+    startCommand: node index.js
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      # Set these manually in the Render dashboard — never commit real values:
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: ADMIN_USERNAME
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: ADMIN_EVENT_PASSWORD
+        sync: false
+      - key: CORS_ORIGIN
+        # Set to your Vercel frontend URL, e.g. https://nexasphere-glbajaj.vercel.app
+        sync: false
+      - key: PUBLIC_APP_URL
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "465"
+      - key: SMTP_SECURE
+        value: "true"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: GOOGLE_SERVICE_ACCOUNT_EMAIL
+        sync: false
+      - key: GOOGLE_PRIVATE_KEY
+        sync: false
+      - key: GOOGLE_SHEET_ID
+        sync: false
+      - key: MEMBERSHIP_SCRIPT_URL
+        sync: false
+      - key: MEMBERSHIP_SECRET
+        sync: false

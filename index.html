@@ -1,26 +1,25 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>NexaSphere — Connecting GL Bajaj Tech Ecosystem</title>
-    <meta name="description" content="NexaSphere is the premier tech community of GL Bajaj Group of Institutions — connecting students through hackathons, codathons, workshops, and more." />
-    <meta name="theme-color" content="#E63946" />
-    <title>NexaSphere — GL Bajaj Tech Ecosystem</title>
-
-    <!-- Favicon -->
-    <link rel="icon" type="image/png" href="/assets/logo-icon.png" />
-    <link rel="icon" type="image/svg+xml" href="/assets/logo-icon.svg" />
-    <link rel="apple-touch-icon" sizes="192x192" href="/pwa-192x192.png" />
-    <link rel="apple-touch-icon" sizes="512x512" href="/pwa-512x512.png" />
-
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <title>NexaSphere — Monorepo Root</title>
+    <meta name="robots" content="noindex" />
+    <style>
+      body { margin: 0; background: #0A0A0A; color: #ccc; font-family: 'Inter', sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; flex-direction: column; gap: 16px; text-align: center; }
+      h1 { color: #CC1111; font-size: 1.4rem; }
+      a { color: #CC1111; padding: 10px 24px; border: 1px solid #CC1111; border-radius: 6px; text-decoration: none; transition: background 0.2s; }
+      a:hover { background: rgba(204,17,17,0.15); }
+      .links { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
+    <h1>NexaSphere Monorepo</h1>
+    <p>This is the root of the monorepo. Use the workspace-specific servers:</p>
+    <div class="links">
+      <a href="http://localhost:5175">🌐 Website (port 5175)</a>
+      <a href="http://localhost:5001">🔐 Admin Dashboard (port 5001)</a>
+    </div>
+    <p style="font-size:0.8rem;opacity:0.5;margin-top:24px;">Run <code>npm run dev:all</code> from the repo root to start both servers.</p>
   </body>
 </html>

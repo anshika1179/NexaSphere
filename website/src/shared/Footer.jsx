@@ -1,0 +1,169 @@
+import { useNavigate } from 'react-router-dom';
+import { BRAND_LOGO_FULL, BRAND_LOGO_ICON, GL_BAJAJ_LOGO } from './brandAssets';
+import { Mail, Heart, ExternalLink } from 'lucide-react';
+
+const NEXASPHERE_EMAIL = 'nexasphere@glbajajgroup.org';
+
+/* ENV-configurable admin dashboard URL (defaults to same-host /admin) */
+const ADMIN_URL = import.meta.env.VITE_ADMIN_DASHBOARD_URL || '/admin';
+
+const FOOTER_LINKS = [
+  { label: 'Activities', path: '/activities' },
+  { label: 'Events', path: '/events' },
+  { label: 'Projects', path: '/projects' },
+  { label: 'Roadmaps', path: '/roadmaps' },
+  { label: 'Portfolio', path: '/portfolio' },
+  { label: 'Collab', path: '/collab' },
+  { label: 'About', path: '/about' },
+  { label: 'Team', path: '/team' },
+  { label: 'Dashboard', path: '/dashboard' },
+  { label: 'Analytics', path: '/analytics' },
+];
+
+const LEGAL_LINKS = [
+  { label: 'Join', path: '/join' },
+  { label: 'Apply', path: '/apply' },
+  { label: 'Contact', path: '/contact' },
+];
+
+export default function Footer({ onAdmin }) {
+  const navigate = useNavigate();
+
+  const go = (path) => {
+    navigate(path);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const openAdmin = () => {
+    if (onAdmin) {
+      onAdmin();
+    } else if (ADMIN_URL.startsWith('http')) {
+      window.open(ADMIN_URL, '_blank', 'noopener,noreferrer');
+    } else {
+      navigate(ADMIN_URL);
+    }
+  };
+
+  return (
+    <footer className="ns-footer">
+      <div className="container">
+        <div className="ns-footer-inner">
+          <div className="ns-footer-divider" />
+
+          {/* Brand row */}
+          <div className="ns-footer-logos">
+            <img
+              src={BRAND_LOGO_ICON}
+              alt="NexaSphere"
+              className="ns-footer-logo-ns ns-footer-logo-mobile"
+              loading="lazy"
+            />
+            <img
+              src={BRAND_LOGO_FULL}
+              alt="NexaSphere"
+              className="ns-footer-logo-full ns-footer-logo-desktop"
+              loading="lazy"
+            />
+            <div style={{ width: 1, height: 24, background: 'var(--bdr2)' }} />
+            <img src={GL_BAJAJ_LOGO} alt="GL Bajaj" className="ns-footer-logo-gl" loading="lazy" />
+          </div>
+
+          {/* Nav links grid */}
+          <nav
+            aria-label="Footer navigation"
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '8px 20px',
+              justifyContent: 'center',
+              margin: '18px 0 12px',
+            }}
+          >
+            {FOOTER_LINKS.map(({ label, path }) => (
+              <button
+                key={path}
+                onClick={() => go(path)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--t2)',
+                  cursor: 'pointer',
+                  fontSize: '0.78rem',
+                  fontFamily: 'inherit',
+                  letterSpacing: '0.04em',
+                  padding: '2px 0',
+                  transition: 'color 0.2s',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--c1)')}
+                onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--t2)')}
+              >
+                {label}
+              </button>
+            ))}
+            {LEGAL_LINKS.map(({ label, path }) => (
+              <button
+                key={path}
+                onClick={() => go(path)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--t2)',
+                  cursor: 'pointer',
+                  fontSize: '0.78rem',
+                  fontFamily: 'inherit',
+                  letterSpacing: '0.04em',
+                  padding: '2px 0',
+                  transition: 'color 0.2s',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--c1)')}
+                onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--t2)')}
+              >
+                {label}
+              </button>
+            ))}
+          </nav>
+
+          <p className="ns-footer-text">
+            © {new Date().getFullYear()} <span>NexaSphere</span> — GL Bajaj Group of Institutions,
+            Mathura
+          </p>
+          <p className="ns-footer-text">
+            <Mail size={14} style={{ display: 'inline', verticalAlign: '-2px' }} />{' '}
+            <a href={`mailto:${NEXASPHERE_EMAIL}`} className="ns-footer-email-link">
+              {NEXASPHERE_EMAIL}
+            </a>
+          </p>
+          <p className="ns-footer-text ns-footer-built">
+            Built with{' '}
+            <Heart
+              size={12}
+              fill="currentColor"
+              style={{ display: 'inline', verticalAlign: '-1px' }}
+            />{' '}
+            by the NexaSphere Core Team ·{' '}
+            <button
+              onClick={openAdmin}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--t2)',
+                cursor: 'pointer',
+                fontSize: 'inherit',
+                fontFamily: 'inherit',
+                textDecoration: 'underline',
+                padding: 0,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '3px',
+              }}
+              aria-label="Open Admin Dashboard"
+            >
+              Admin Dashboard
+              <ExternalLink size={10} style={{ opacity: 0.6 }} />
+            </button>
+          </p>
+        </div>
+      </div>
+    </footer>
+  );
+}

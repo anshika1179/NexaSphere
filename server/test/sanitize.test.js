@@ -43,7 +43,7 @@ test('sanitizeCoreTeamMemberRecord escapes profile fields and optional links', (
     whatsapp: '1234567890',
     linkedin: 'https://example.com/?q="x"&y=<z>',
     instagram: 'https://instagram.com/<handle>',
-    photoUrl: 'https://cdn.example.com/"avatar".png?alt=<img>',
+    photoUrl: 'https://cdn.example.com/"avatar".png?alt=<img alt="">',
   });
 
   assert.equal(sanitized.name, '&lt;script&gt;Alice&lt;/script&gt;');
@@ -52,10 +52,10 @@ test('sanitizeCoreTeamMemberRecord escapes profile fields and optional links', (
   assert.equal(sanitized.branch, 'CSE &amp; IT');
   assert.equal(sanitized.linkedin, 'https://example.com/?q=&quot;x&quot;&amp;y=&lt;z&gt;');
   assert.equal(sanitized.instagram, 'https://instagram.com/&lt;handle&gt;');
-  assert.equal(sanitized.photoUrl, 'https://cdn.example.com/&quot;avatar&quot;.png?alt=&lt;img&gt;');
+  assert.equal(sanitized.photoUrl, 'https://cdn.example.com/&quot;avatar&quot;.png?alt=&lt;img alt=&quot;&quot;&gt;');
 });
 
-test('sanitizeActivityEventRecord escapes nested creator fields', () => {
+test('sanitizeActivityEventRecord strips createdBy PII', () => {
   const sanitized = sanitizeActivityEventRecord({
     name: '<script>Session</script>',
     date: 'June 1, 2026',
@@ -63,15 +63,13 @@ test('sanitizeActivityEventRecord escapes nested creator fields', () => {
     description: '<p>body</p> & "data"',
     createdBy: {
       name: 'Bob <admin>',
-      email: 'bob@example.com?x=<script>',
-      phone: '123-456-7890 & 999',
+      email: 'bob@example.com',
+      phone: '123-456-7890',
     },
   });
 
   assert.equal(sanitized.name, '&lt;script&gt;Session&lt;/script&gt;');
   assert.equal(sanitized.tagline, 'Tagline &amp; &quot;quote&quot;');
   assert.equal(sanitized.description, '&lt;p&gt;body&lt;/p&gt; &amp; &quot;data&quot;');
-  assert.equal(sanitized.createdBy.name, 'Bob &lt;admin&gt;');
-  assert.equal(sanitized.createdBy.email, 'bob@example.com?x=&lt;script&gt;');
-  assert.equal(sanitized.createdBy.phone, '123-456-7890 &amp; 999');
+  assert.equal(sanitized.createdBy, undefined);
 });

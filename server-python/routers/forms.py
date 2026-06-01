@@ -1,17 +1,19 @@
 import logging
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 
 from models.forms import FormSubmission
 from services.sheets import sheets_service
 from services.supabase import supabase_service
+from utils.security import limiter
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
 @router.post("/api/forms/membership")
-async def submit_membership(form: FormSubmission):
+@limiter.limit("5/hour")
+async def submit_membership(request: Request, form: FormSubmission):
     try:
         form_dict = form.model_dump()
 
@@ -28,7 +30,8 @@ async def submit_membership(form: FormSubmission):
 
 
 @router.post("/api/forms/recruitment")
-async def submit_recruitment(form: FormSubmission):
+@limiter.limit("5/hour")
+async def submit_recruitment(request: Request, form: FormSubmission):
     try:
         form_dict = form.model_dump()
 
@@ -45,7 +48,8 @@ async def submit_recruitment(form: FormSubmission):
 
 
 @router.post("/api/core-team/apply")
-async def submit_core_team_application(form: FormSubmission):
+@limiter.limit("5/hour")
+async def submit_core_team_application(request: Request, form: FormSubmission):
     try:
         form_dict = form.model_dump()
 

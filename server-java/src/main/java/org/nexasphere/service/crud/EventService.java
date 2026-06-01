@@ -8,13 +8,14 @@ import org.nexasphere.repository.EventRepository;
 import org.nexasphere.event.AdminEventPublisher;
 import org.nexasphere.util.Sanitizer;
 import org.springframework.http.HttpStatus;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Objects;
 
 @Service
-@SuppressWarnings("null")
 public class EventService {
 
     private final EventRepository repo;
@@ -31,40 +32,48 @@ public class EventService {
         return repo.findAllByOrderByCreatedAtDesc();
     }
 
-    public EventEntity createEvent(EventEntity event, String adminEmail) {
+    public EventEntity createEvent(EventEntity event, @NonNull String adminEmail) {
         sanitize(event);
         event.generateId();
-        if (repo.existsById(event.getId())) {
-            event.setId(event.getId() + "-" + System.currentTimeMillis());
+        String eventId = Objects.requireNonNull(event.getId(), "generateId() must set a non-null id");
+        if (repo.existsById(eventId)) {
+            event.setId(eventId + "-" + System.currentTimeMillis());
         }
         EventEntity saved = repo.save(event);
-        publisher.publish(new EventCreatedEvent(adminEmail, saved));
+        publisher.publish(new EventCreatedEvent(adminEmail, Objects.requireNonNull(saved)));
         return saved;
     }
 
-    public EventEntity updateEvent(String id, EventEntity updates, String adminEmail) {
-        EventEntity existing = repo.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+    public EventEntity updateEvent(@NonNull String id, EventEntity updates, @NonNull String adminEmail) {
+        EventEntity existing = Objects.requireNonNull(
+                repo.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND)));
 
         EventEntity snapshot = snapshot(existing);
         sanitize(updates);
 
         existing.setName(updates.getName());
         existing.setShortName(updates.getShortName());
+        existing.setHasDetailPage(updates.isHasDetailPage());
+        existing.setStartDate(updates.getStartDate());
+        existing.setEndDate(updates.getEndDate());
         existing.setDateText(updates.getDateText());
         existing.setDescription(updates.getDescription());
         existing.setStatus(updates.getStatus());
         existing.setIcon(updates.getIcon());
+        existing.setCategory(updates.getCategory());
+        existing.setLocation(updates.getLocation());
+        existing.setCapacity(updates.getCapacity());
         existing.setTags(updates.getTags());
+        existing.setGradientColors(updates.getGradientColors());
 
         EventEntity saved = repo.save(existing);
-        publisher.publish(new EventUpdatedEvent(adminEmail, snapshot, saved));
+        publisher.publish(new EventUpdatedEvent(adminEmail, snapshot, Objects.requireNonNull(saved)));
         return saved;
     }
 
-    public void deleteEvent(String id, String adminEmail) {
-        EventEntity event = repo.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+    public void deleteEvent(@NonNull String id, @NonNull String adminEmail) {
+        EventEntity event = Objects.requireNonNull(
+                repo.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND)));
         repo.delete(event);
         publisher.publish(new EventDeletedEvent(adminEmail, event));
     }
@@ -74,6 +83,8 @@ public class EventService {
         e.setShortName(sanitizer.clean(e.getShortName()));
         e.setDateText(sanitizer.clean(e.getDateText()));
         e.setDescription(sanitizer.clean(e.getDescription()));
+        e.setCategory(sanitizer.clean(e.getCategory()));
+        e.setLocation(sanitizer.clean(e.getLocation()));
     }
 
     private EventEntity snapshot(EventEntity src) {
@@ -81,11 +92,18 @@ public class EventService {
         copy.setId(src.getId());
         copy.setName(src.getName());
         copy.setShortName(src.getShortName());
+        copy.setHasDetailPage(src.isHasDetailPage());
+        copy.setStartDate(src.getStartDate());
+        copy.setEndDate(src.getEndDate());
         copy.setDateText(src.getDateText());
         copy.setDescription(src.getDescription());
         copy.setStatus(src.getStatus());
         copy.setIcon(src.getIcon());
+        copy.setCategory(src.getCategory());
+        copy.setLocation(src.getLocation());
+        copy.setCapacity(src.getCapacity());
         copy.setTags(src.getTags() == null ? null : List.copyOf(src.getTags()));
+        copy.setGradientColors(src.getGradientColors() == null ? null : List.copyOf(src.getGradientColors()));
         return copy;
     }
 }

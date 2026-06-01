@@ -3,9 +3,13 @@
  * Handles all errors in a centralized location
  */
 
-const logger = require("./logger");
-const { captureException } = require("./sentry");
-const { sendSlackAlert } = require("./slack");
+import logger from "../utils/logger.js";
+import { captureException } from "../utils/sentry.js";
+import { sendSlackAlert } from "../utils/slack.js";
+
+function resolveUserId(req) {
+  return req.user?.id || req.adminSession?.username || null;
+}
 
 /**
  * Main error handler middleware
@@ -26,7 +30,7 @@ const errorHandler = (err, req, res, next) => {
     url: req.originalUrl,
     method: req.method,
     ip: req.ip,
-    userId: req.user?.id,
+    userId: resolveUserId(req),
     timestamp: new Date().toISOString(),
     stack: err.stack,
   };
@@ -35,7 +39,7 @@ const errorHandler = (err, req, res, next) => {
 
   // Capture to Sentry
   captureException(err, {
-    userId: req.user?.id,
+    userId: resolveUserId(req),
     requestPath: req.originalUrl,
     method: req.method,
     tags: { errorType: err.name, status },
@@ -43,13 +47,13 @@ const errorHandler = (err, req, res, next) => {
   });
 
   // Send Slack alert for critical errors
-  if (status >= 500 || (status === 401 && !req.user)) {
+  if (status >= 500 || (status === 401 && !resolveUserId(req))) {
     sendSlackAlert({
       title: `🚨 ${status} Error Detected`,
       message,
       url: req.originalUrl,
       method: req.method,
-      userId: req.user?.id,
+      userId: resolveUserId(req),
       timestamp: errorLog.timestamp,
       stack: err.stack?.substring(0, 500),
     });
@@ -123,7 +127,7 @@ const asyncHandler = (fn) => (req, res, next) => {
   });
 };
 
-module.exports = {
+export {
   errorHandler,
   notFoundHandler,
   validationErrorHandler,
