@@ -180,7 +180,7 @@ app.delete(
 
 // Admin Auth Endpoints
 app.post('/api/admin/login', authRateLimiter, adminAuthMiddleware.login);
-app.post('/api/admin/logout', adminAuthMiddleware.logout);
+app.post('/api/admin/logout', adminAuth, adminAuthMiddleware.logout);
 app.use('/api/admin/analytics', adminAuth, analyticsRouter);
 app.use('/api/admin/metrics', adminAuth, adminStreamRouter);
 

@@ -222,12 +222,13 @@ async function login(req, res) {
 
 async function logout(req, res) {
   try {
-    const token =
-      req.cookies?.ns_admin_token ||
-      getCookie(req, 'ns_admin_token') ||
-      parseBearer(req.headers.authorization || '');
+    const token = req.adminSession?.token;
+
     if (token) {
       await revokeAdminSession(token);
+    } else {
+      // In case logout is called without authentication
+      return res.status(401).json({ error: 'No active session to revoke' });
     }
 
     res.clearCookie('ns_admin_token', {
