@@ -220,10 +220,38 @@ async function logout(req, res) {
   }
 }
 
+function requireAdminRole(rolesArray) {
+  return async (req, res, next) => {
+    try {
+      if (req.query.token) {
+        return res.status(400).json({ error: 'Do not pass tokens in URLs.' });
+      }
+
+      const token = req.cookies?.ns_admin_token || getCookie(req, 'ns_admin_token') || parseBearer(req.headers.authorization || '');
+      const session = await getAdminSession(token);
+
+      if (!session) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      const role = session.metadata?.role || 'Moderator';
+      if (!rolesArray.includes(role)) {
+        return res.status(403).json({ error: 'Forbidden: Insufficient role' });
+      }
+
+      req.adminSession = session;
+      return next();
+    } catch {
+      return res.status(500).json({ error: 'Unable to validate admin session' });
+    }
+  };
+}
+
 export const adminAuthMiddleware = {
   login,
   logout,
   requireAdmin,
+  requireAdminRole,
   // Private test exports for auditing & validation
   _getLoginAttemptsMapSize: () => loginAttemptsByIp.size,
   _clearAllLoginAttempts: () => loginAttemptsByIp.clear(),

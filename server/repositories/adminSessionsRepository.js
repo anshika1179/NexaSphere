@@ -97,6 +97,13 @@ export async function createAdminSession({ username, metadata = {} }) {
   const ttlMs = getSessionTtlMs();
   const expiresAt = new Date(Date.now() + ttlMs);
 
+  // Assign default roles and permissions if not provided
+  const sessionMetadata = {
+    role: metadata.role || (username === 'admin' ? 'SuperAdmin' : 'Moderator'),
+    permissions: metadata.permissions || (username === 'admin' ? ['*'] : ['read']),
+    ...metadata,
+  };
+
   await withDb(async (client) => {
     await client.query(
       `insert into admin_sessions (token_hash, username, metadata, expires_at)
@@ -108,7 +115,7 @@ export async function createAdminSession({ username, metadata = {} }) {
          last_seen_at = now(),
          expires_at = excluded.expires_at,
          revoked_at = null`,
-      [tokenHash, username, metadata, expiresAt]
+      [tokenHash, username, sessionMetadata, expiresAt]
     );
   });
 
