@@ -270,7 +270,7 @@ export const portfolioRepository = {
     return await verifyHash(passkey, portfolio.passkeyHash);
   },
 
-  async createOrUpdate(data) {
+  async createOrUpdate(data, isNewRegistration) {
     const isDbAvailable = await ensureReady();
 
     // Sanitize the entire record before any I/O so the database
@@ -338,6 +338,9 @@ export const portfolioRepository = {
           return mapRow(rows[0]);
         });
       } catch (err) {
+        if (err.code === '23505') {
+          throw err; // Bubble up unique constraint violation
+        }
         console.error('Database INSERT/UPDATE failed. Falling back to local file.', err);
       }
     }

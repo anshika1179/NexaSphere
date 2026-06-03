@@ -11,7 +11,7 @@ const adminClients = new Map();
 const MAX_SSE_CLIENTS = Math.max(1, parseInt(process.env.MAX_SSE_CLIENTS || '200', 10) || 200);
 const HEARTBEAT_INTERVAL_MS = Math.max(
   5_000,
-  parseInt(process.env.SSE_HEARTBEAT_INTERVAL_MS || '30000', 10) || 30_000
+  parseInt(process.env.SSE_HEARTBEAT_INTERVAL_MS || '15000', 10) || 15_000
 );
 const MAX_DROPPED_WRITES = Math.max(
   1,
@@ -70,7 +70,6 @@ export function addSSEClient(res, adminSession = null) {
   if (adminClients.has(res)) {
     return;
   }
-
   if (adminClients.size >= MAX_SSE_CLIENTS) {
     logger.warn('SSE client rejected: max clients reached', {
       totalClients: adminClients.size,
@@ -97,7 +96,19 @@ export function addSSEClient(res, adminSession = null) {
     admin: username,
   });
 
+  // Start the heartbeat interval immediately upon successful connection
+  res._heartbeat = setInterval(() => {
+    try {
+      res.write(': heartbeat\n\n');
+    } catch (error) {
+      clearInterval(res._heartbeat);
+      cleanupClient(res, 'heartbeat_error', { error: error?.message });
+    }
+  }, HEARTBEAT_INTERVAL_MS);
+
   res.on('close', () => {
+    // Clear interval is handled inside cleanupClient, but keeping it explicit here is safe
+    if (res._heartbeat) clearInterval(res._heartbeat);
     cleanupClient(res, 'close');
   });
 
