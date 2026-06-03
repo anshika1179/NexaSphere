@@ -5,6 +5,8 @@ import {
   startAdminSessionCleanup,
 } from '../repositories/adminSessionsRepository.js';
 import crypto from 'crypto';
+import { getScopesForRole } from '../config/rbac.js';
+
 function safeEqual(a, b) {
   const bufA = Buffer.from(String(a));
   const bufB = Buffer.from(String(b));
@@ -15,8 +17,24 @@ function safeEqual(a, b) {
 
   return crypto.timingSafeEqual(bufA, bufB);
 }
-const ADMIN_USERNAME = requiredEnv('ADMIN_USERNAME');
-const ADMIN_PASSWORD = requiredStrongPassword('ADMIN_PASSWORD');
+
+let adminUsers = [];
+try {
+  if (process.env.ADMIN_USERS_JSON) {
+    adminUsers = JSON.parse(process.env.ADMIN_USERS_JSON);
+  } else {
+    adminUsers = [
+      {
+        username: requiredEnv('ADMIN_USERNAME'),
+        password: requiredStrongPassword('ADMIN_PASSWORD'),
+        role: 'SuperAdmin',
+      },
+    ];
+  }
+} catch (err) {
+  console.error('Failed to parse ADMIN_USERS_JSON', err);
+  process.exit(1);
+}
 const LOGIN_WINDOW_MS = parsePositiveInteger(process.env.ADMIN_LOGIN_WINDOW_MS, 15 * 60 * 1000);
 const LOGIN_MAX_ATTEMPTS = parsePositiveInteger(process.env.ADMIN_LOGIN_MAX_ATTEMPTS, 5);
 const LOGIN_MAX_TRACKED_IPS = parsePositiveInteger(process.env.ADMIN_LOGIN_MAX_TRACKED_IPS, 10000);
@@ -175,6 +193,27 @@ async function requireAdmin(req, res, next) {
   }
 }
 
+function requireScope(requiredScope) {
+  return async (req, res, next) => {
+    // First, ensure they are authenticated
+    await requireAdmin(req, res, (err) => {
+      if (err) return next(err);
+
+      if (!req.adminSession) {
+        // Response already sent by requireAdmin
+        return;
+      }
+
+      const sessionScopes = req.adminSession?.metadata?.scopes || [];
+      if (!sessionScopes.includes(requiredScope)) {
+        return res.status(403).json({ error: 'Forbidden: Insufficient permissions' });
+      }
+
+      next();
+    });
+  };
+}
+
 async function login(req, res) {
   try {
     const u = String(req.body?.username || '').trim();
@@ -186,18 +225,27 @@ async function login(req, res) {
       return res.status(429).json({ error: 'Too many login attempts. Please wait and try again.' });
     }
 
-    if (!safeEqual(u, ADMIN_USERNAME) || !safeEqual(p, ADMIN_PASSWORD)) {
+    const matchedUser = adminUsers.find(
+      (user) => safeEqual(u, user.username) && safeEqual(p, user.password)
+    );
+
+    if (!matchedUser) {
       recordLoginAttempt(ip);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     clearLoginAttempts(ip);
 
+    const role = matchedUser.role || 'SuperAdmin';
+    const scopes = getScopesForRole(role);
+
     const session = await createAdminSession({
       username: u,
       metadata: {
         userAgent: req.get('user-agent') || '',
         ip,
+        role,
+        scopes,
       },
     });
 
@@ -211,6 +259,8 @@ async function login(req, res) {
     return res.json({
       username: u,
       expiresAt: session.expiresAt,
+      role,
+      scopes,
     });
   } catch {
     return res.status(500).json({ error: 'Unable to create admin session' });
@@ -220,7 +270,6 @@ async function login(req, res) {
 async function logout(req, res) {
   try {
     const token = req.adminSession?.token;
-
     if (token) {
       await revokeAdminSession(token);
     } else {
@@ -244,6 +293,7 @@ export const adminAuthMiddleware = {
   login,
   logout,
   requireAdmin,
+  requireScope,
   // Private test exports for auditing & validation
   _getLoginAttemptsMapSize: () => loginAttemptsByIp.size,
   _clearAllLoginAttempts: () => loginAttemptsByIp.clear(),

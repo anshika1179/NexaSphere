@@ -433,14 +433,17 @@ const failedPasskeyAttempts = new Map();
 // Periodic sweep every 30 minutes: remove entries whose lockout period has
 // expired and whose attempt count has already been reset to 0, so they do
 // not accumulate for keys that are never visited again.
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, entry] of failedPasskeyAttempts) {
-    if (entry.count === 0 && now > entry.lockoutUntil) {
-      failedPasskeyAttempts.delete(key);
+setInterval(
+  () => {
+    const now = Date.now();
+    for (const [key, entry] of failedPasskeyAttempts) {
+      if (entry.count === 0 && now > entry.lockoutUntil) {
+        failedPasskeyAttempts.delete(key);
+      }
     }
-  }
-}, 30 * 60 * 1000).unref();
+  },
+  30 * 60 * 1000
+).unref();
 
 function checkPasskeyLockout(username, ip) {
   const key = `${String(username || '').toLowerCase()}:${ip}`;
