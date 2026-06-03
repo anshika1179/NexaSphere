@@ -42,6 +42,7 @@ import * as formsController from './controllers/formsController.js';
 import { eventsService } from './services/eventsService.js';
 import { coreTeamService } from './services/coreTeamService.js';
 import notificationsService from './services/notificationsService.js';
+import { auditLogService } from './services/auditLogService.js';
 
 // Fail fast on startup if any rate limiter failed to export correctly.
 validateLimiters();
@@ -97,6 +98,7 @@ function requestLogger(req, res, next) {
 }
 
 app.use(requestLogger);
+auditLogService.initAuditTable();
 
 // ── Health check (required by Render, Railway, and load balancers) ──
 app.get('/health', (_req, res) => {
