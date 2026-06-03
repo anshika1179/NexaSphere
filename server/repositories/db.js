@@ -44,6 +44,7 @@ function getPoolConfig() {
 }
 
 let pool = null;
+let replicaPool = null;
 
 function getPool() {
   if (pool) return pool;
@@ -54,6 +55,16 @@ function getPool() {
     connectionString: databaseUrl,
     ...getPoolConfig(),
   });
+
+  if (process.env.READ_REPLICA_URL) {
+    replicaPool = new pg.Pool({
+      connectionString: process.env.READ_REPLICA_URL,
+      ...getPoolConfig(),
+    });
+    replicaPool.on('error', (err) => {
+      console.error('[pg.Pool] Unexpected error on idle read-replica client:', err.message);
+    });
+  }
 
   // Surface unexpected errors on idle clients so they do not silently crash
   // the process or swallow stack traces. The pool itself stays alive — pg
@@ -73,7 +84,19 @@ export async function withDb(fn) {
   }
   const p = getPool();
   if (!p) throw new Error('PostgreSQL not configured. Missing DATABASE_URL.');
-  const client = await p.connect();
+  
+  let client;
+  try {
+    client = await p.connect();
+  } catch (err) {
+    if (replicaPool) {
+      console.warn('Primary DB unreachable, failing over to read-replica');
+      client = await replicaPool.connect();
+    } else {
+      throw err;
+    }
+  }
+
   try {
     return await fn(client);
   } finally {
