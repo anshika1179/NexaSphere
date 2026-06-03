@@ -6,6 +6,7 @@
 import winston from "winston";
 import path from "path";
 import DailyRotateFile from "winston-daily-rotate-file";
+import { requestContext } from "../middleware/tracingMiddleware.js";
 
 // Create logs directory if it doesn't exist
 import fs from "fs";
@@ -42,8 +43,16 @@ const format = winston.format.combine(
     const { timestamp, level, message, ...args } = info;
 
     const ts = timestamp.slice(0, 19).replace("T", " ");
+    
+    let reqIdStr = "";
+    try {
+      const reqId = requestContext.getStore();
+      if (reqId) reqIdStr = ` [${reqId}]`;
+    } catch (e) {
+      // Ignore
+    }
 
-    return `${ts} [${level}]: ${message} ${
+    return `${ts} [${level}]${reqIdStr}: ${message} ${
       Object.keys(args).length ? JSON.stringify(args, null, 2) : ""
     }`;
   })

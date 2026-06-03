@@ -14,6 +14,7 @@ import { sendWelcomeVerificationEmail } from './services/emailService.js';
 import { ZodError } from 'zod';
 import { normalizeFormSubmission } from './validators/formSchemas.js';
 import { adminAuthMiddleware } from './middleware/adminAuthMiddleware.js';
+import { tracingMiddleware } from './middleware/tracingMiddleware.js';
 import analyticsRouter from './routes/analytics.js';
 import { initializeSocketIO, emitToRoom, getRoom } from './config/socket.js';
 import adminStreamRouter from './routes/adminStream.js';
@@ -51,6 +52,7 @@ const __dirname = path.dirname(__filename);
 const CONTENT_FILE = path.join(__dirname, 'data', 'content.json');
 
 const app = express();
+app.use(tracingMiddleware);
 initializeSentry(app);
 
 if (!process.env.CORS_ORIGIN) {
