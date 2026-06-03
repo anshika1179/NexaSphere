@@ -3,9 +3,16 @@ import { generateUUID } from '../utils/uuid.js';
 const MAX_PER_USER = 10000;
 const TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const notificationsStore = new Map();
+const MAX_USER_STORES = 1000;
 
 function _ensureList(userId = 'global') {
-  if (!notificationsStore.has(userId)) notificationsStore.set(userId, []);
+  if (!notificationsStore.has(userId)) {
+    if (notificationsStore.size >= MAX_USER_STORES) {
+      const oldestKey = notificationsStore.keys().next().value;
+      notificationsStore.delete(oldestKey);
+    }
+    notificationsStore.set(userId, []);
+  }
   return notificationsStore.get(userId);
 }
 
@@ -19,7 +26,7 @@ function _removeExpired(list) {
 export function getNotifications(userId = 'global') {
   const list = _ensureList(userId);
   _removeExpired(list);
-  return list.slice().sort((a,b)=> new Date(b.createdAt) - new Date(a.createdAt));
+  return list.slice().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 }
 
 export function addNotification(userId = 'global', payload = {}) {
@@ -46,14 +53,18 @@ export function markAsRead(userId = 'global', id) {
   const list = _ensureList(userId);
   let changed = false;
   for (const n of list) {
-    if (n.id === id) { n.isRead = true; changed = true; break; }
+    if (n.id === id) {
+      n.isRead = true;
+      changed = true;
+      break;
+    }
   }
   return changed;
 }
 
 export function markAllAsRead(userId = 'global') {
   const list = _ensureList(userId);
-  list.forEach(n => n.isRead = true);
+  list.forEach((n) => (n.isRead = true));
 }
 
 export function clearAll(userId = 'global') {
@@ -62,7 +73,7 @@ export function clearAll(userId = 'global') {
 
 export function removeNotification(userId = 'global', id) {
   const list = _ensureList(userId);
-  const idx = list.findIndex(n => n.id === id);
+  const idx = list.findIndex((n) => n.id === id);
   if (idx >= 0) {
     list.splice(idx, 1);
     return true;
@@ -71,5 +82,10 @@ export function removeNotification(userId = 'global', id) {
 }
 
 export default {
-  getNotifications, addNotification, markAsRead, markAllAsRead, clearAll, removeNotification,
+  getNotifications,
+  addNotification,
+  markAsRead,
+  markAllAsRead,
+  clearAll,
+  removeNotification,
 };
