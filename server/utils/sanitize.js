@@ -8,15 +8,23 @@ const HTML_ESCAPE_MAP = {
 };
 
 function escapeHtml(value) {
-  return String(value ?? '').replace(/[&<>"'`]/g, (character) => HTML_ESCAPE_MAP[character]).trim();
+  return String(value ?? '')
+    .replace(/[&<>"'`]/g, (character) => HTML_ESCAPE_MAP[character])
+    .trim();
 }
 
 function sanitizeText(value, max = 4000) {
-  return escapeHtml(String(value ?? '').trim().slice(0, max));
+  return escapeHtml(
+    String(value ?? '')
+      .trim()
+      .slice(0, max)
+  );
 }
 
 function sanitizeNullableText(value, max = 4000) {
-  const text = String(value ?? '').trim().slice(0, max);
+  const text = String(value ?? '')
+    .trim()
+    .slice(0, max);
   return text ? escapeHtml(text) : null;
 }
 
@@ -29,7 +37,10 @@ function sanitizeTextArray(values, max = 40) {
       .slice(0, 12);
   }
 
-  return values.map((entry) => sanitizeText(entry, max)).filter(Boolean).slice(0, 12);
+  return values
+    .map((entry) => sanitizeText(entry, max))
+    .filter(Boolean)
+    .slice(0, 12);
 }
 
 export function sanitizeEventRecord(event = {}) {
@@ -72,7 +83,9 @@ export function sanitizeCoreTeamMemberRecord(member = {}) {
 }
 
 function toSafeString(value, max = 4000) {
-  return String(value ?? '').trim().slice(0, max);
+  return String(value ?? '')
+    .trim()
+    .slice(0, max);
 }
 
 export { escapeHtml, sanitizeNullableText, sanitizeText, sanitizeTextArray, toSafeString };
