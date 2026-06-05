@@ -55,15 +55,26 @@ const colors = {
 
 winston.addColors(colors);
 
-// Define log format
-const format = winston.format.combine(
-  winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss:ms' }),
+// Define transports
+// 1. Define the base format WITHOUT colorize
+const baseFileFormat = winston.format.combine(
+  winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss:ms" }),
   winston.format.errors({ stack: true }),
+  winston.format.splat(),
   winston.format.printf((info) => {
-    const store = appContext.getStore();
-    const reqId = store?.reqId ? `[${store.reqId}] ` : '';
-    return `${info.timestamp} ${reqId}[${info.level}]: ${info.message} ${
-      info.stack ? `\n${info.stack}` : ''
+    const { timestamp, level, message, ...args } = info;
+    const ts = typeof timestamp === 'string' ? timestamp : new Date().toISOString();
+
+    // Strip out internal Winston symbol keys so they don't print as empty objects
+    const cleanArgs = Object.keys(args).reduce((acc, key) => {
+      if (typeof key === "string" || typeof key === "number") {
+        acc[key] = args[key];
+      }
+      return acc;
+    }, {});
+
+    return `${ts} [${level}]: ${message} ${
+      Object.keys(cleanArgs).length ? JSON.stringify(cleanArgs, null, 2) : ""
     }`;
   })
 );
@@ -71,7 +82,10 @@ const format = winston.format.combine(
 // Define transports safely based on storage permissions
 const activeTransports = [
   new winston.transports.Console({
-    format: winston.format.combine(winston.format.colorize({ all: true }), format),
+    format: winston.format.combine(
+      winston.format.colorize({ all: true }),
+      baseFileFormat
+    ),
   }),
 ];
 
@@ -104,21 +118,21 @@ const logger = winston.createLogger({
   transports: activeTransports, 
   exceptionHandlers: isStorageWritable ? [
     new DailyRotateFile({
-      filename: path.join(logsDir, 'exceptions-%DATE%.log'),
-      datePattern: 'YYYY-MM-DD',
-      maxSize: '20m',
-      maxFiles: '14d',
-      format: winston.format.uncolorize(),
+      filename: path.join(logsDir, "exceptions-%DATE%.log"),
+      datePattern: "YYYY-MM-DD",
+      maxSize: "20m",
+      maxFiles: "14d",
+      format: baseFileFormat, //  FIX: Ensures clean exception dumps
       utc: true,
     }),
   ] : undefined, 
   rejectionHandlers: isStorageWritable ? [
     new DailyRotateFile({
-      filename: path.join(logsDir, 'rejections-%DATE%.log'),
-      datePattern: 'YYYY-MM-DD',
-      maxSize: '20m',
-      maxFiles: '14d',
-      format: winston.format.uncolorize(),
+      filename: path.join(logsDir, "rejections-%DATE%.log"),
+      datePattern: "YYYY-MM-DD",
+      maxSize: "20m",
+      maxFiles: "14d",
+      format: baseFileFormat, //  FIX: Ensures clean rejection dumps
       utc: true,
     }),
   ] : undefined, 
