@@ -94,7 +94,8 @@ app.use(cors({ origin: allowedOrigins, credentials: true }));
 
 app.use(tracingMiddleware);
 
-app.use(express.json({ limit: '512kb' }));
+app.use(express.json({ limit: '10kb' }));
+app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 app.use(morgan('combined'));
 app.use(performanceMonitor);
 
