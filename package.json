@@ -51,6 +51,10 @@
     "@rollup/rollup-linux-x64-musl": "4.60.0"
   },
   "dependencies": {
-    "lru-cache": "^11.5.1"
+    "framer-motion": "^12.40.0",
+    "lru-cache": "^11.5.1",
+    "lucide-react": "^1.17.0",
+    "pusher": "^5.3.3",
+    "pusher-js": "^8.5.0"
   }
 }
