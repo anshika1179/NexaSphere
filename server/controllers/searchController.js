@@ -18,7 +18,7 @@ export const searchController = {
 
       if (type === 'all' || type === 'events') {
         const events = await eventsRepository.list({ page: 1, limit: 100 });
-        const matched = (events?.events || [])
+        const matched = (events?.rows || [])
           .filter(
             (ev) =>
               ev.name?.toLowerCase().includes(query) ||
@@ -97,7 +97,7 @@ export const searchController = {
   async trending(req, res) {
     try {
       const events = await eventsRepository.list({ page: 1, limit: 100 });
-      const allEvents = events?.events || [];
+      const allEvents = events?.rows || [];
 
       const now = new Date();
       const sorted = allEvents
@@ -132,7 +132,7 @@ export const searchController = {
     try {
       const { userId, eventId } = req.query;
       const events = await eventsRepository.list({ page: 1, limit: 100 });
-      const allEvents = events?.events || [];
+      const allEvents = events?.rows || [];
 
       let recommended = [];
 
