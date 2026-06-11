@@ -111,6 +111,44 @@ export async function withDb(fn) {
     }
   }
 
+  const originalQuery = client.query;
+  client.query = function (config, values, callback) {
+    const start = Date.now();
+    
+    let cb = callback;
+    if (typeof values === 'function') {
+      cb = values;
+    }
+    
+    const handleStats = (err) => {
+      const duration = Date.now() - start;
+      import('../middleware/performanceMonitor.js').then(({ recordDbQueryMetric }) => {
+        recordDbQueryMetric(config, duration, err);
+      }).catch(() => {});
+    };
+
+    if (typeof cb === 'function') {
+      const wrappedCallback = (err, result) => {
+        handleStats(err);
+        cb(err, result);
+      };
+      if (typeof values === 'function') {
+        return originalQuery.call(this, config, wrappedCallback);
+      }
+      return originalQuery.call(this, config, values, wrappedCallback);
+    }
+    
+    return originalQuery.call(this, config, values, callback)
+      .then(res => {
+        handleStats(null);
+        return res;
+      })
+      .catch(err => {
+        handleStats(err);
+        throw err;
+      });
+  };
+
   try {
     return await fn(client);
   } finally {
