@@ -109,6 +109,7 @@ const LoginPage = lazy(() => import('./pages/login/LoginPage'));
 const MentorsPage = lazy(() => import('./pages/mentorship/MentorsPage'));
 const MentorshipDashboard = lazy(() => import('./pages/mentorship/MentorshipDashboard'));
 const StatusPage = lazy(() => import('./pages/StatusPage'));
+const LiveStreamPage = lazy(() => import('./pages/streaming/LiveStreamPage'));
 
 const MNH = 88,
   DNH = 64;
@@ -368,7 +369,9 @@ function Cursor() {
 export default function App() {
   return (
     <BrowserRouter>
-      <AppShell />
+      <StudentAuthProvider>
+        <AppShell />
+      </StudentAuthProvider>
     </BrowserRouter>
   );
 }
@@ -828,6 +831,24 @@ function MainRouter({
             <Route
               path="/events/:eventId"
               element={<EventDetailWrapper onBack={() => nav('/events')} events={eventsData} />}
+            />
+
+            {/* ── Live Streaming ── */}
+            <Route
+              path="/stream/:eventId"
+              element={
+                <PageIn k="stream">
+                  <LiveStreamPage />
+                </PageIn>
+              }
+            />
+            <Route
+              path="/stream/:eventId/:streamId"
+              element={
+                <PageIn k="stream-id">
+                  <LiveStreamPage />
+                </PageIn>
+              }
             />
 
             {/* ── Dashboard (requires auth) ── */}

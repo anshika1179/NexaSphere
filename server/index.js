@@ -1,4 +1,7 @@
 import 'dotenv/config';
+import { initObservability } from './observability/index.js';
+import { setTraceIdResolver } from './utils/logContext.js';
+import { getActiveTraceId } from './observability/tracing.js';
 import helmet from 'helmet';
 import express from 'express';
 import { body, validationResult } from 'express-validator';
@@ -18,6 +21,7 @@ import { performanceMonitor } from './middleware/performanceMonitor.js';
 import { tracingMiddleware } from './middleware/tracingMiddleware.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { initializeSentry, addSentryErrorHandler } from './utils/sentry.js';
+import { validateEnvironment } from './utils/envValidator.js';
 import {
   apiRateLimiter,
   formRateLimiter,
@@ -36,6 +40,7 @@ import { pushSubscriptionsRepository } from './repositories/pushSubscriptionsRep
 import { getPublicAppUrl } from './utils/publicAppUrl.js';
 import * as eventsController from './controllers/eventsController.js';
 import * as activityEventsController from './controllers/activityEventsController.js';
+import * as streamController from './controllers/streamController.js';
 import * as coreTeamController from './controllers/coreTeamController.js';
 import * as formsController from './controllers/formsController.js';
 import { eventsService } from './services/eventsService.js';
@@ -49,6 +54,7 @@ import { studentUsersRepository } from './repositories/studentUsersRepository.js
 import * as studentAuthController from './controllers/studentAuthController.js';
 import * as forumController from './controllers/forumController.js';
 import { requireStudentAuth } from './middleware/studentAuthMiddleware.js';
+import { studentAuthService } from './services/studentAuthService.js';
 import * as mentorshipController from './controllers/mentorshipController.js';
 import { xssSanitizer } from './middleware/xssSanitizer.js';
 import { tierRateLimiter } from './middleware/tierRateLimiter.js';
@@ -61,7 +67,16 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const CONTENT_FILE = path.join(__dirname, 'data', 'content.json');
 
+
+
+validateEnvironment();
+
 const app = express();
+
+setTraceIdResolver(getActiveTraceId);
+initObservability(app);
+
+const useStructuredHttpLog = (process.env.LOG_FORMAT || '').toLowerCase() === 'json';
 
 // Trust the first reverse proxy hop (e.g., Vercel, Render, Nginx, Cloudflare)
 // to correctly populate req.ip and securely discard spoofed X-Forwarded-For headers
@@ -230,7 +245,9 @@ app.use(tracingMiddleware);
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 app.use(xssSanitizer);
-app.use(morgan('combined'));
+if (!useStructuredHttpLog) {
+  app.use(morgan('combined'));
+}
 app.use(performanceMonitor);
 app.use(cookieParser());
 
@@ -259,7 +276,9 @@ function requestLogger(req, res, next) {
   next();
 }
 
-app.use(requestLogger);
+if (!useStructuredHttpLog) {
+  app.use(requestLogger);
+}
 
 // ── Health check (required by Render, Railway, and load balancers) ──
 app.get('/health', (_req, res) => {
@@ -380,6 +399,23 @@ app.get('/api/admin/events', adminAuth, eventsController.adminListEvents);
 app.post('/api/admin/events', adminAuth, eventsController.adminCreateEvent);
 app.put('/api/admin/events/:id', adminAuth, eventsController.adminUpdateEvent);
 app.delete('/api/admin/events/:id', adminAuth, eventsController.adminDeleteEvent);
+
+// Live Streaming
+app.get('/api/streams', streamController.listStreams);
+app.get('/api/streams/event/:eventId', streamController.getStreamByEvent);
+app.get('/api/streams/:id', streamController.getStream);
+app.post('/api/streams', streamController.createStream);
+app.put('/api/streams/:id', streamController.updateStream);
+app.patch('/api/streams/:id/status', streamController.setStreamStatus);
+app.delete('/api/streams/:id', streamController.deleteStream);
+app.post('/api/streams/:id/chat', streamController.addChatMessage);
+app.get('/api/streams/:id/chat', streamController.listChatMessages);
+app.post('/api/streams/:id/polls', streamController.createPoll);
+app.get('/api/streams/:id/polls', streamController.listPolls);
+app.post('/api/streams/polls/:pollId/vote', streamController.votePoll);
+app.patch('/api/streams/polls/:pollId/close', streamController.closePoll);
+app.patch('/api/streams/chat/:messageId/moderate', streamController.moderateChatMessage);
+app.get('/api/admin/streams', adminAuth, streamController.adminListAll);
 
 // Public listings
 app.get('/api/content/team', async (req, res) => {
@@ -575,11 +611,32 @@ app.post(
   }
 );
 
-app.post('/api/notifications/mark-read', adminAuth, notificationRateLimiter, async (req, res) => {
+function requireNotificationAuth(req, res, next) {
+  adminAuthMiddleware.requireAdmin(req, res, (err) => {
+    if (!err && req.adminSession) {
+      return next();
+    }
+    requireStudentAuth(req, res, (err2) => {
+      if (!err2 && req.studentUser) {
+        return next();
+      }
+      return res.status(401).json({ error: 'Unauthorized: Authentication required' });
+    });
+  });
+}
+
+app.post('/api/notifications/mark-read', requireNotificationAuth, notificationRateLimiter, async (req, res) => {
   try {
     const { id, userId } = req.body || {};
     if (!id) return res.status(400).json({ error: 'id required' });
-    const uid = userId || 'global';
+    let uid = userId || 'global';
+    if (req.studentUser) {
+      const studentId = req.studentUser.sub || req.studentUser.id;
+      if (userId && userId !== studentId) {
+        return res.status(403).json({ error: 'Forbidden: Cannot modify other users notifications' });
+      }
+      uid = studentId;
+    }
     const ok = await notificationsService.markAsRead(uid, id);
     return res.json({ success: ok });
   } catch (err) {
@@ -589,12 +646,20 @@ app.post('/api/notifications/mark-read', adminAuth, notificationRateLimiter, asy
 
 app.post(
   '/api/notifications/mark-all-read',
-  adminAuth,
+  requireNotificationAuth,
   notificationRateLimiter,
   async (req, res) => {
     try {
       const { userId } = req.body || {};
-      await notificationsService.markAllAsRead(userId || 'global');
+      let uid = userId || 'global';
+      if (req.studentUser) {
+        const studentId = req.studentUser.sub || req.studentUser.id;
+        if (userId && userId !== studentId) {
+          return res.status(403).json({ error: 'Forbidden' });
+        }
+        uid = studentId;
+      }
+      await notificationsService.markAllAsRead(uid);
       return res.json({ success: true });
     } catch (err) {
       return res.status(500).json({ error: err.message });
@@ -602,11 +667,18 @@ app.post(
   }
 );
 
-app.delete('/api/notifications/:id', adminAuth, notificationRateLimiter, async (req, res) => {
+app.delete('/api/notifications/:id', requireNotificationAuth, notificationRateLimiter, async (req, res) => {
   try {
     const id = req.params.id;
-    const userId = req.query.userId || 'global';
-    const removed = await notificationsService.removeNotification(userId, id);
+    let uid = req.query.userId || 'global';
+    if (req.studentUser) {
+      const studentId = req.studentUser.sub || req.studentUser.id;
+      if (req.query.userId && req.query.userId !== studentId) {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
+      uid = studentId;
+    }
+    const removed = await notificationsService.removeNotification(uid, id);
     if (!removed) return res.status(404).json({ error: 'Notification not found' });
     return res.json({ success: true });
   } catch (err) {
@@ -614,10 +686,17 @@ app.delete('/api/notifications/:id', adminAuth, notificationRateLimiter, async (
   }
 });
 
-app.delete('/api/notifications', adminAuth, notificationRateLimiter, async (req, res) => {
+app.delete('/api/notifications', requireNotificationAuth, notificationRateLimiter, async (req, res) => {
   try {
-    const userId = req.query.userId || 'global';
-    await notificationsService.clearAll(userId);
+    let uid = req.query.userId || 'global';
+    if (req.studentUser) {
+      const studentId = req.studentUser.sub || req.studentUser.id;
+      if (req.query.userId && req.query.userId !== studentId) {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
+      uid = studentId;
+    }
+    await notificationsService.clearAll(uid);
     return res.json({ success: true });
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -766,6 +845,49 @@ function clearPasskeyAttempts(username, ip) {
 app.get('/api/notifications', async (req, res) => {
   try {
     const userId = req.query.userId || 'global';
+
+    if (userId !== 'global') {
+      let authenticated = false;
+
+      // 1. Try Student Auth
+      let token = null;
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        token = authHeader.slice(7).trim();
+      }
+      if (!token && req.cookies?.ns_student_token) {
+        token = req.cookies.ns_student_token;
+      }
+      if (token) {
+        const payload = studentAuthService.verifyToken(token);
+        if (payload && (payload.sub === userId || payload.id === userId)) {
+          authenticated = true;
+        }
+      }
+
+      // 2. Try Admin Auth
+      if (!authenticated) {
+        let adminToken = null;
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+          adminToken = authHeader.slice(7).trim();
+        }
+        if (!adminToken && req.cookies?.ns_admin_token) {
+          adminToken = req.cookies.ns_admin_token;
+        }
+        if (adminToken) {
+          const { getAdminSession } = await import('./repositories/adminSessionsRepository.js');
+          const session = await getAdminSession(adminToken);
+          if (session) {
+            authenticated = true;
+          }
+        }
+      }
+
+      if (!authenticated) {
+        return res.status(401).json({ error: 'Unauthorized to view these notifications' });
+      }
+    }
+
     const offset = parseInt(req.query.offset, 10) || 0;
     const limit = Math.min(parseInt(req.query.limit, 10) || 100, 500);
     const list = await notificationsService.getNotifications(userId, offset, limit);
