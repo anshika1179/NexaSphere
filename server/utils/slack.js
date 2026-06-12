@@ -115,6 +115,66 @@ function formatSlackMessage(data) {
       {
         color: color,
         blocks: blocks,
+        title: data.title || '🚨 Alert',
+        fields: [
+          {
+            title: 'Message',
+            value: data.message || 'No message provided',
+            short: false,
+          },
+          ...(data.url
+            ? [
+                {
+                  title: 'URL',
+                  value: data.url,
+                  short: false,
+                },
+              ]
+            : []),
+          ...(data.method
+            ? [
+                {
+                  title: 'Method',
+                  value: data.method,
+                  short: true,
+                },
+              ]
+            : []),
+          ...(data.userId
+            ? [
+                {
+                  title: 'User ID',
+                  value: data.userId,
+                  short: true,
+                },
+              ]
+            : []),
+          ...(data.timestamp
+            ? [
+                {
+                  title: 'Timestamp',
+                  value: (() => {
+                    const parsedDate = new Date(data.timestamp);
+                    return !isNaN(parsedDate.getTime())
+                      ? parsedDate.toISOString()
+                      : new Date().toISOString(); // Safe fallback to current time
+                  })(),
+                  short: true,
+                },
+              ]
+            : []),
+          ...(data.stack
+            ? [
+                {
+                  title: 'Stack Trace',
+                  value: '```' + data.stack + '```',
+                  short: false,
+                },
+              ]
+            : []),
+        ],
+        footer: 'NexaSphere Error Monitoring',
+        ts: Math.floor(Date.now() / 1000),
       },
     ],
   };
@@ -168,6 +228,22 @@ async function sendPerformanceAlert(metrics) {
       ],
     };
 
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      logger.error('Failed to send performance alert', {
+        status: response.status,
+        statusText: response.statusText,
+      });
+    } else {
+      logger.info('Performance alert sent successfully');
+    }
     await slackBreaker.execute(webhookUrl, payload);
     logger.info('Performance alert sent successfully');
   } catch (error) {

@@ -167,7 +167,7 @@ app.use(
         scriptSrc: ["'self'"],
 
         // Allow styles from self only
-        styleSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
 
         // Images
         imgSrc: ["'self'", 'data:', 'blob:', 'https:'],

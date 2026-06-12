@@ -54,6 +54,9 @@ const colors = {
 
 winston.addColors(colors);
 
+// Define base log layout template
+const logLayout = winston.format.printf((info) => {
+  const { timestamp, level, message, ...args } = info;
 const LOG_FORMAT = (process.env.LOG_FORMAT || 'text').toLowerCase();
 
 const correlationFormat = winston.format((info) => {
@@ -77,6 +80,9 @@ const logLayout = winston.format.printf((info) => {
   }`;
 });
 
+// Define clean log format for file transports
+const baseFileFormat = winston.format.combine(
+  winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss:ms" }),
 const textFormat = winston.format.combine(
   winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss:ms' }),
   winston.format.errors({ stack: true }),
@@ -100,6 +106,24 @@ const textFormat = winston.format.combine(
   })
 );
 
+// Determine runtime levels: Console is dynamic, historical files maintain info baseline
+const consoleLevel = process.env.LOG_LEVEL || 'info';
+const fileBaselineLevel = 'info';
+
+// Ensure the root gatekeeper allows debug logs through if requested, otherwise defaults to info
+const globalGatekeeperLevel = consoleLevel === 'debug' ? 'debug' : fileBaselineLevel;
+
+// Define activeTransports array, starting with the Console transport
+const activeTransports = [
+  // Console transport (Colorizes exclusively for terminal output)
+  new winston.transports.Console({
+    level: consoleLevel,
+    format: winston.format.combine(
+      winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss:ms" }),
+      winston.format.errors({ stack: true }),
+      winston.format.colorize({ all: true }),
+      logLayout
+    ),
 const baseFileFormat = LOG_FORMAT === 'json' ? jsonFormat : textFormat;
 
 const consoleLevel = process.env.LOG_LEVEL_CONSOLE || 'info';
@@ -124,16 +148,20 @@ const activeTransports = [
 
 if (isStorageWritable) {
   activeTransports.push(
+    // Error logs
     new winston.transports.File({
       filename: path.join(logsDir, 'error.log'),
       level: 'error',
       format: winston.format.uncolorize(),
     }),
+
     new winston.transports.File({
       filename: path.join(logsDir, 'combined.log'),
       level: fileBaselineLevel,
       format: winston.format.uncolorize(),
     }),
+
+    // Daily rotate logs (requires winston-daily-rotate-file)
     new DailyRotateFile({
       filename: path.join(logsDir, 'application-%DATE%.log'),
       datePattern: 'YYYY-MM-DD',
