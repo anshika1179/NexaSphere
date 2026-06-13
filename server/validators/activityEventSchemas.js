@@ -19,13 +19,8 @@ export const activityEventSchema = z
       .default(undefined),
   })
   .transform((data) => {
-    const id = data.id || generatePrefixedId('manual');
-
     return {
       ...data,
-      id,
-      status: data.status === 'upcoming' ? 'upcoming' : 'completed',
-      tagline: data.tagline || '',
-      createdBy: data.createdBy,
+      id: data.id || generatePrefixedId('manual'),
     };
   });
