@@ -98,7 +98,8 @@ function normalizeBase(data) {
   };
 }
 
-const recruitmentSubmissionSchema = CommonIdentitySchema.merge(RecruitmentExtrasSchema)
+const recruitmentSubmissionSchema = CommonIdentitySchema.passthrough()
+  .merge(RecruitmentExtrasSchema.passthrough())
   .superRefine((data, ctx) => {
     if (!data.collegeEmail && !data.email) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['collegeEmail'], message: 'Email address is required' });
@@ -130,11 +131,14 @@ const recruitmentSubmissionSchema = CommonIdentitySchema.merge(RecruitmentExtras
       groups: data.groups,
       whyJoin: normalized.reason,
     };
-  });
+  })
+  // Strip any leftover fallback/unknown keys at the final output boundary
+  .pipe(z.object({}).passthrough().strip());
 
 const coreTeamApplicationSchema = recruitmentSubmissionSchema;
 
-const membershipSubmissionSchema = CommonIdentitySchema.merge(MembershipExtrasSchema)
+const membershipSubmissionSchema = CommonIdentitySchema.passthrough()
+  .merge(MembershipExtrasSchema.passthrough())
   .superRefine((data, ctx) => {
     if (!data.collegeEmail && !data.email) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['collegeEmail'], message: 'Email address is required' });
@@ -154,19 +158,9 @@ const membershipSubmissionSchema = CommonIdentitySchema.merge(MembershipExtrasSc
       whyJoin: normalized.reason,
       reason: normalized.reason,
     };
-  });
-
-export function normalizeFormSubmission(formType, body) {
-  if (formType === 'membership') {
-    return membershipSubmissionSchema.parse(body || {});
-  }
-
-  if (formType === 'recruitment' || formType === 'core_team') {
-    return coreTeamApplicationSchema.parse(body || {});
-  }
-
-  throw new Error(`Unsupported form type: ${formType}`);
-}
+  })
+  // Strip any leftover fallback/unknown keys at the final output boundary
+  .pipe(z.object({}).passthrough().strip());
 
 export {
   coreTeamApplicationSchema,
