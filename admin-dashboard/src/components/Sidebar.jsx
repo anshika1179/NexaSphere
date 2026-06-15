@@ -107,6 +107,11 @@ const links = [
     label: 'Circuit Breaker',
     icon: 'Activity',
   },
+  {
+    to: '/dashboard/alerts',
+    label: 'Alerts',
+    icon: 'Bell',
+  },
 ];
 
 export function Sidebar() {
