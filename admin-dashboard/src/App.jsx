@@ -21,6 +21,7 @@ import { StreamManager } from './pages/StreamManager';
 import { CircuitBreakerManager } from './pages/CircuitBreakerManager';
 import { ResourcesManager } from './pages/ResourcesManager';
 import { ScheduledTasksManager } from './pages/ScheduledTasksManager';
+import { AlertManager } from './pages/AlertManager';
 import './styles/admin.css';
 
 function RequireAuth() {
@@ -78,6 +79,7 @@ export default function App() {
             <Route path="/dashboard/circuit-breaker" element={<CircuitBreakerManager />} />
             <Route path="/dashboard/resources" element={<ResourcesManager />} />
             <Route path="/dashboard/scheduled-tasks" element={<ScheduledTasksManager />} />
+            <Route path="/dashboard/alerts" element={<AlertManager />} />
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/login" replace />} />
