@@ -66,6 +66,11 @@ const links = [
     icon: 'Clock',
     requiredScope: 'settings:admin',
   },
+  {
+    to: '/dashboard/alerts',
+    label: 'Alerts',
+    icon: 'Bell',
+  },
 ];
 
 export function Sidebar() {
