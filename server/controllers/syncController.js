@@ -1,6 +1,13 @@
 import { withDb } from '../repositories/db.js';
 import logger from '../utils/logger.js';
 
+export const getDeploymentHealth = async (req, res) => {
+  res.json({
+    status: "healthy",
+    rollbackAvailable: true,
+    trafficSwitchReady: true,
+  });
+};
 export const syncController = {
   async getSyncStatus(req, res) {
     try {

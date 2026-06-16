@@ -45,3 +45,9 @@ export const getSubscriberNotifications = () => {
     notificationsEnabled: true,
   };
 };
+
+export const deploymentStatus = {
+  status: "healthy",
+  version: "1.0.0",
+  lastDeployment: null,
+};
