@@ -10,9 +10,9 @@ import { getApiBase } from '../../utils/runtimeConfig';
 export default function AdminPage({ onBack }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [isLoggedIn, setIsLoggedIn] = useState(
-    () => localStorage.getItem('ns_admin_logged_in') === 'true'
-  );
+  // Derive initial auth state from token presence rather than a spoofable
+  // boolean flag — the token is validated server-side on the first API call.
+  const [isLoggedIn, setIsLoggedIn] = useState(() => !!localStorage.getItem('ns_admin_token'));
   const [token, setToken] = useState(null);
   const [loginData, setLoginData] = useState({ username: '', password: '' });
   const [data, setData] = useState({
@@ -69,7 +69,7 @@ export default function AdminPage({ onBack }) {
         if (!response.ok) {
           if (response.status === 401) {
             setIsLoggedIn(false);
-            localStorage.removeItem('ns_admin_logged_in');
+            localStorage.removeItem('ns_admin_token');
             return;
           }
           throw new Error(`SSE connection failed: ${response.status}`);
@@ -194,7 +194,6 @@ export default function AdminPage({ onBack }) {
         localStorage.setItem('ns_admin_token', result.token);
         setToken(result.token);
       }
-      localStorage.setItem('ns_admin_logged_in', 'true');
       setIsLoggedIn(true);
       setError(null);
     } catch (err) {
@@ -214,7 +213,7 @@ export default function AdminPage({ onBack }) {
     } catch (err) {
       console.error(err);
     }
-    localStorage.removeItem('ns_admin_logged_in');
+    localStorage.removeItem('ns_admin_token');
     setIsLoggedIn(false);
     setData({ stats: null, growth: [], events: [] });
     socketClient.destroySocket();
