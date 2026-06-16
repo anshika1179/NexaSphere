@@ -9,16 +9,6 @@ import { PermissionGuard } from './PermissionGuard';
 const WEBSITE_URL = import.meta.env.VITE_WEBSITE_URL || 'http://localhost:5175';
 
 const links = [
-  {
-    to: '/dashboard',
-    label: 'Dashboard',
-    icon: 'Dashboard',
-  },
-  {
-    to: '/dashboard/events',
-    label: 'Events',
-    icon: 'Calendar',
-  },
   { to: '/dashboard', label: 'Dashboard', icon: 'Dashboard' },
   { to: '/dashboard/events', label: 'Events', icon: 'Calendar', requiredScope: 'events:read' },
   {
@@ -57,31 +47,6 @@ const links = [
     icon: 'Users',
     requiredScope: 'settings:admin',
   },
-  {
-    to: '/dashboard/core-team',
-    label: 'Core Team',
-    icon: 'Users',
-  },
-  {
-    to: '/dashboard/membership',
-    label: 'Membership',
-    icon: 'FileText',
-  },
-  {
-    to: '/dashboard/recruitment',
-    label: 'Recruitment',
-    icon: 'UserPlus',
-  },
-  {
-    to: '/dashboard/certificates',
-    label: 'Certificates',
-    icon: 'Award',
-  },
-  {
-    to: '/dashboard/announcements',
-    label: 'Announcements',
-    icon: 'Megaphone',
-  },
   { to: '/dashboard/membership', label: 'Membership', icon: 'FileText' },
   { to: '/dashboard/recruitment', label: 'Recruitment', icon: 'UserPlus' },
   { to: '/dashboard/certificates', label: 'Certificates', icon: 'Award' },
@@ -112,6 +77,12 @@ const links = [
     to: '/dashboard/circuit-breaker',
     label: 'Circuit Breaker',
     icon: 'Activity',
+  },
+  {
+    to: '/dashboard/resources',
+    label: 'Resources',
+    icon: 'FileText',
+    requiredScope: 'events:read',
   },
 ];
 
