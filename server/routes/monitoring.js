@@ -18,6 +18,7 @@ import { getSessionSecurityData } from '../utils/sessionSecurity.js';
 import { getMigrationStatus } from '../utils/migrationSafety.js';
 import { recordPageLoad } from '../observability/metrics.js';
 import { getServiceHealth, getFailoverStatus } from '../utils/failoverManager.js';
+import securityPatchManager from "../utils/securityPatchManager.js";
 
 function requireMonitoringAuth(req, res, next) {
   const authHeader = req.headers.authorization;
@@ -507,6 +508,27 @@ router.get('/dependency-health', async (req, res) => {
 
 router.get("/deployment-status", (req, res) => {
   res.json(deploymentStatus);
+});
+
+// Get security patch scan result
+router.get("/security-patches", (req, res) => {
+  const result = securityPatchManager.checkSecurityUpdates();
+
+  return res.json({
+    success: true,
+    data: result,
+  });
+});
+
+
+// Get complete patch report
+router.get("/security-patches/report", (req, res) => {
+  const report = securityPatchManager.generatePatchReport();
+
+  return res.json({
+    success: true,
+    data: report,
+  });
 });
 
 export default router;

@@ -13,6 +13,7 @@ import express from 'express';
 
 import logger from '../utils/logger.js';
 import { captureException, captureMessage, addBreadcrumb } from '../utils/sentry.js';
+import securityPatchManager from "../utils/securityPatchManager.js";
 
 // In-memory error store (consider using database in production)
 const errorStore = {
@@ -272,6 +273,20 @@ function getTimeSince(timestamp) {
 function clearErrors() {
   errorStore.errors = [];
 }
+
+// Monitor critical security patches
+export const checkCriticalSecurityAlerts = () => {
+  const criticalIssues =
+    securityPatchManager.getCriticalVulnerabilities();
+
+  if (criticalIssues.length > 0) {
+    console.error(
+      `[SECURITY ALERT] ${criticalIssues.length} critical patches required`
+    );
+  }
+
+  return criticalIssues;
+};
 
 export { logError, getErrorStats, getRecentErrors, getEndpointErrors, getUserErrors, clearErrors };
 export const predictServiceFailure = (history) => {

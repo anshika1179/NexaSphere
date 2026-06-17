@@ -374,4 +374,29 @@
  *                   type: boolean
  */
 
+/**
+ * @swagger
+ * /api/monitoring/security-patches:
+ *   get:
+ *     summary: Get security patch status
+ *     tags:
+ *       - Monitoring
+ *     responses:
+ *       200:
+ *         description: Security patch scan result
+ */
+
+
+/**
+ * @swagger
+ * /api/monitoring/security-patches/report:
+ *   get:
+ *     summary: Get complete security patch report
+ *     tags:
+ *       - Monitoring
+ *     responses:
+ *       200:
+ *         description: Detailed security patch report
+ */
+
 export default {};
