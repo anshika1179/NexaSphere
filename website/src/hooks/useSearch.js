@@ -123,7 +123,9 @@ export function useSearch(activities, events, apiBase = '') {
         const base = apiBase || '';
         try {
           const res = await fetch(`${base}/api/content/team`);
-          if (res.ok) {
+          if (!res.ok) {
+            setApiError(`Team member search unavailable (${res.status})`);
+          } else {
             const data = await res.json();
             const members = data?.members || [];
             const matched = members
@@ -143,7 +145,12 @@ export function useSearch(activities, events, apiBase = '') {
               }));
             all = [...all, ...matched];
           }
-        } catch {}
+        } catch (err) {
+          if (err.name !== 'AbortError') {
+            console.warn('[useSearch] Team member fetch failed:', err.message);
+            setApiError('Failed to search team members. Please try again.');
+          }
+        }
       }
 
       setResults(all);
