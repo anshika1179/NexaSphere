@@ -3,7 +3,7 @@ import { RoadmapBuilderProvider } from '../../context/RoadmapBuilderContext';
 import { useRoadmapBuilder } from '../../hooks/useRoadmapBuilder';
 import { NodeCanvas } from './NodeCanvas';
 import { NodeModal } from './NodeModal';
-import { parseStaticRoadmap } from '../../utils/roadmapParser';
+import { parseStaticRoadmap, type StaticRoadmap } from '../../utils/roadmapParser';
 import {
   exportToJSON,
   validateRoadmapJSON,
@@ -11,6 +11,10 @@ import {
   downloadPNG,
 } from '../../utils/exportRoadmap';
 import { roadmapData } from '../../data/roadmapData';
+
+// Use StaticRoadmap from roadmapParser — eliminates as any casts
+// when accessing domain keys and title fields in the builder.
+type RoadmapDataMap = Record<string, StaticRoadmap>;
 import {
   ArrowLeft,
   Plus,
@@ -246,7 +250,7 @@ const RoadmapBuilderInner: React.FC<RoadmapBuilderInnerProps> = ({ onBack }) => 
               </option>
               {Object.keys(roadmapData).map((key) => (
                 <option key={key} value={key}>
-                  {(roadmapData as any)[key].title}
+                  {(roadmapData as RoadmapDataMap)[key].title}
                 </option>
               ))}
             </select>
