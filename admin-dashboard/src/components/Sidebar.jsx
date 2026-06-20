@@ -56,16 +56,10 @@ const links = [
     icon: 'Activity',
   },
   {
-    to: '/dashboard/advanced-analytics',
-    label: 'Adv. Analytics',
-    icon: 'BarChart',
+    to: '/dashboard/subscriptions',
+    label: 'Subscriptions',
+    icon: 'Award',
     requiredScope: 'events:read',
-  },
-  {
-    to: '/dashboard/scheduled-tasks',
-    label: 'Scheduled Tasks',
-    icon: 'Clock',
-    requiredScope: 'settings:admin',
   },
 ];
 

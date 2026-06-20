@@ -854,6 +854,46 @@ async function fetchWithAuth(url, options = {}) {
         }
       }
 
+      // /api/admin/subscriptions
+      else if (url.startsWith('/api/admin/subscriptions')) {
+        let subs = getDb('subscriptions', []);
+
+        if (method === 'GET' && url === '/api/admin/subscriptions') {
+          resolve({ subscriptions: subs });
+        }
+        if (method === 'GET' && url === '/api/admin/subscriptions/stats') {
+          resolve({
+            total: subs.length,
+            premium: subs.filter((s) => s.tier === 'premium').length,
+            pro: subs.filter((s) => s.tier === 'pro').length,
+            revenue: subs.reduce((sum, s) => sum + (s.price || 0), 0),
+          });
+        }
+        if (method === 'POST' && !url.includes('/cancel') && !url.includes('/billing')) {
+          const newSub = {
+            id: Date.now().toString(),
+            userId: body.userId,
+            tier: body.tierId,
+            status: 'active',
+            price: body.tierId === 'premium' ? 499 : 999,
+            currentPeriodEnd: Date.now() + 30 * 86400000,
+            createdAt: Date.now(),
+          };
+          subs = [...subs, newSub];
+          setDb('subscriptions', subs);
+          resolve(newSub);
+        }
+        if (method === 'POST' && url.includes('/cancel')) {
+          const userId = url.split('/')[4];
+          subs = subs.map((s) => (s.userId === userId ? { ...s, status: 'cancelled' } : s));
+          setDb('subscriptions', subs);
+          resolve({ success: true });
+        }
+        if (url.includes('/billing')) {
+          resolve({ invoices: [] });
+        }
+      }
+
       // /api/admin/events/:eventId/analytics
       else if (url.match(/\/api\/admin\/events\/[^\/]+\/analytics/)) {
         const eventId = url.split('/')[4];
@@ -870,61 +910,6 @@ async function fetchWithAuth(url, options = {}) {
           yearBreakdown: [],
           waitlist: [],
         });
-      }
-
-      // /api/admin/users
-      else if (url.startsWith('/api/admin/users')) {
-        const mockUsers = [
-          {
-            id: '1',
-            username: 'johndoe',
-            display_name: 'John Doe',
-            email: 'john@example.com',
-            role: 'user',
-          },
-          {
-            id: '2',
-            username: 'janesmith',
-            display_name: 'Jane Smith',
-            email: 'jane@example.com',
-            role: 'user',
-          },
-          {
-            id: '3',
-            username: 'bobwilson',
-            display_name: 'Bob Wilson',
-            email: 'bob@example.com',
-            role: 'moderator',
-          },
-        ];
-        resolve({ users: mockUsers, page: 1, limit: 20 });
-      }
-
-      // /api/admin/impersonate
-      else if (url.startsWith('/api/admin/impersonate')) {
-        const key = 'ns_impersonation';
-        if (url.endsWith('/status')) {
-          const active = localStorage.getItem(key);
-          resolve(
-            active
-              ? { impersonating: true, user: JSON.parse(active) }
-              : { impersonating: false, user: null }
-          );
-        } else if (url.includes('/start/')) {
-          const mockUser = {
-            id: url.split('/').pop(),
-            username: 'mockuser',
-            display_name: 'Mock User',
-            email: 'mock@test.com',
-          };
-          localStorage.setItem(key, JSON.stringify(mockUser));
-          resolve({ impersonating: true, user: mockUser });
-        } else if (url.endsWith('/stop')) {
-          localStorage.removeItem(key);
-          resolve({ impersonating: false });
-        } else {
-          resolve({ impersonating: false });
-        }
       }
     }, 300); // simulate slight network delay
   });
@@ -1425,57 +1410,44 @@ export const api = {
     },
   },
 
-  rbac: {
-    getRoles: () => fetchWithAuth('/api/admin/rbac/roles'),
-    getPermissions: () => fetchWithAuth('/api/admin/rbac/permissions'),
-    getPermissionMatrix: () => fetchWithAuth('/api/admin/rbac/matrix'),
-    createRole: async (role) => {
-      const result = await fetchWithAuth('/api/admin/rbac/roles', {
+  subscriptions: {
+    getAll: async () => {
+      if (auth.isOfflineMode()) {
+        const subs = safeJsonParse(localStorage.getItem('ns_db_subscriptions'), []);
+        return { subscriptions: subs };
+      }
+      return fetchWithAuth('/api/admin/subscriptions');
+    },
+    getStats: async () => {
+      if (auth.isOfflineMode()) {
+        const subs = safeJsonParse(localStorage.getItem('ns_db_subscriptions'), []);
+        return {
+          total: subs.length,
+          premium: subs.filter((s) => s.tier === 'premium').length,
+          pro: subs.filter((s) => s.tier === 'pro').length,
+          revenue: subs.reduce((sum, s) => sum + (s.price || 0), 0),
+        };
+      }
+      return fetchWithAuth('/api/admin/subscriptions/stats');
+    },
+    create: async (userId, tierId) => {
+      const result = await fetchWithAuth('/api/admin/subscriptions', {
         method: 'POST',
-        body: JSON.stringify(role),
+        body: JSON.stringify({ userId, tierId }),
       });
-      eventEmitter.emit(EVENTS.NOTIFY, { type: 'success', message: 'Role created' });
+      eventEmitter.emit(EVENTS.SUBSCRIPTION_CREATED, result);
+      eventEmitter.emit(EVENTS.NOTIFY, { type: 'success', message: 'Subscription created' });
       return result;
     },
-    updateRole: async (name, role) => {
-      const result = await fetchWithAuth(`/api/admin/rbac/roles/${name}`, {
-        method: 'PUT',
-        body: JSON.stringify(role),
-      });
-      eventEmitter.emit(EVENTS.NOTIFY, { type: 'success', message: 'Role updated' });
-      return result;
-    },
-    deleteRole: async (name) => {
-      await fetchWithAuth(`/api/admin/rbac/roles/${name}`, { method: 'DELETE' });
-      eventEmitter.emit(EVENTS.NOTIFY, { type: 'success', message: 'Role deleted' });
-    },
-    getUsersWithRoles: () => fetchWithAuth('/api/admin/rbac/users'),
-    assignRole: async (assignment) => {
-      const result = await fetchWithAuth('/api/admin/rbac/assign', {
+    cancel: async (userId) => {
+      const result = await fetchWithAuth(`/api/admin/subscriptions/${userId}/cancel`, {
         method: 'POST',
-        body: JSON.stringify(assignment),
       });
-      eventEmitter.emit(EVENTS.NOTIFY, { type: 'success', message: 'Role assigned' });
+      eventEmitter.emit(EVENTS.SUBSCRIPTION_CANCELLED, result);
+      eventEmitter.emit(EVENTS.NOTIFY, { type: 'success', message: 'Subscription cancelled' });
       return result;
     },
-    revokeRole: async (userId, roleName) => {
-      await fetchWithAuth(`/api/admin/rbac/assign/${userId}/${roleName}`, {
-        method: 'DELETE',
-      });
-      eventEmitter.emit(EVENTS.NOTIFY, { type: 'success', message: 'Role revoked' });
-    },
-    bulkAssignRoles: async (assignments) => {
-      const result = await fetchWithAuth('/api/admin/rbac/bulk-assign', {
-        method: 'POST',
-        body: JSON.stringify({ assignments }),
-      });
-      eventEmitter.emit(EVENTS.NOTIFY, { type: 'success', message: 'Roles assigned in bulk' });
-      return result;
-    },
-    getAuditLogs: (params = {}) => {
-      const query = new URLSearchParams(params).toString();
-      return fetchWithAuth(`/api/admin/rbac/audit${query ? `?${query}` : ''}`);
-    },
+    getBillingHistory: (userId) => fetchWithAuth(`/api/admin/subscriptions/${userId}/billing`),
   },
 };
 

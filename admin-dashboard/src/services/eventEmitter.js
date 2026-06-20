@@ -108,7 +108,7 @@ export const EVENTS = {
 
   ONLINE_RECONNECTED: 'online:reconnected',
 
-  // Impersonation events
-  IMPERSONATION_STARTED: 'impersonation:started',
-  IMPERSONATION_STOPPED: 'impersonation:stopped',
+  SUBSCRIPTION_CREATED: 'subscription:created',
+  SUBSCRIPTION_UPDATED: 'subscription:updated',
+  SUBSCRIPTION_CANCELLED: 'subscription:cancelled',
 };
