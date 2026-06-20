@@ -29,6 +29,7 @@ import './styles/aurora.css';
 import './styles/motion.css';
 
 import SearchBar from './components/SearchBar';
+import './i18n';
 import FloatingDock from './components/common/FloatingDock';
 import ParticleBackground from './shared/ParticleBackground';
 import GeometricGridBackground from './shared/GeometricGridBackground';
@@ -114,7 +115,7 @@ const LiveStreamPage = lazy(() => import('./pages/streaming/LiveStreamPage'));
 const ResourcesPage = lazy(() => import('./pages/resources/ResourcesPage'));
 const NotificationHistoryPage = lazy(() => import('./pages/notifications/NotificationHistoryPage'));
 const SponsorsPage = lazy(() => import('./pages/sponsors/SponsorsPage'));
-const EventBudgetPage = lazy(() => import('./pages/finance/EventBudgetPage'));
+const ResourcesPage = lazy(() => import('./pages/resources/ResourcesPage'));
 
 const MNH = 88,
   DNH = 64;
