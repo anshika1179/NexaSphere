@@ -6,6 +6,7 @@ import { getActiveTraceId } from './observability/tracing.js';
 import helmet from 'helmet';
 import express from 'express';
 import cors from 'cors';
+import csrf from 'csurf';
 import morgan from 'morgan';
 import fs, { promises as fsp } from 'fs';
 import { body, validationResult } from 'express-validator';
@@ -71,6 +72,9 @@ import notificationsService from './services/notificationsService.js';
 import { notificationPreferencesRepository } from './repositories/notificationPreferencesRepository.js';
 import { HAS_SUPABASE } from './storage/supabaseClient.js';
 import cookieParser from 'cookie-parser';
+import session from 'express-session';
+import RedisStore from 'connect-redis';
+import Redis from 'ioredis';
 import passport from './config/studentOAuth.js';
 import { studentUsersRepository } from './repositories/studentUsersRepository.js';
 import * as studentAuthController from './controllers/studentAuthController.js';
@@ -122,6 +126,44 @@ app.set(
 
 initializeSentry(app);
 app.use(compression());
+
+// Redis Session Setup for Disaster Recovery / Horizontal Scaling
+export const redisClient = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
+  maxRetriesPerRequest: 3,
+  retryStrategy: (times) => Math.min(times * 50, 2000),
+});
+
+const redisStore = new RedisStore({
+  client: redisClient,
+  prefix: 'nexasphere:sess:',
+});
+
+app.use(
+  session({
+    store: redisStore,
+    secret: process.env.SESSION_SECRET || 'dr-fallback-secret',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: process.env.NODE_ENV === 'production',
+      httpOnly: true,
+      sameSite: 'lax',
+      maxAge: 1000 * 60 * 60 * 24, // 24 hours
+    },
+  })
+);
+
+// CSRF Protection middleware - protects against Cross-Site Request Forgery
+app.use(csrf());
+
+// Expose CSRF token to the client via a non-httpOnly cookie
+app.use((req, res, next) => {
+  res.cookie('XSRF-TOKEN', req.csrfToken(), {
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+  });
+  next();
+});
 
 if (!process.env.CORS_ORIGIN) {
   throw new Error('CORS_ORIGIN environment variable must be set.');
@@ -1156,14 +1198,25 @@ app.post('/api/streams', adminAuth, streamController.createStream);
 app.put('/api/streams/:id', adminAuth, streamController.updateStream);
 app.patch('/api/streams/:id/status', adminAuth, streamController.setStreamStatus);
 app.delete('/api/streams/:id', adminAuth, streamController.deleteStream);
-app.post('/api/streams/:id/chat', streamController.addChatMessage);
+app.post('/api/streams/:id/chat', apiRateLimiter, streamController.addChatMessage);
 app.get('/api/streams/:id/chat', streamController.listChatMessages);
+app.post('/api/streams/:id/ban', adminAuth, streamController.banUser);
 app.post('/api/streams/:id/polls', streamController.createPoll);
 app.get('/api/streams/:id/polls', streamController.listPolls);
 app.post('/api/streams/polls/:pollId/vote', streamController.votePoll);
 app.patch('/api/streams/polls/:pollId/close', adminAuth, streamController.closePoll);
 app.patch('/api/streams/chat/:messageId/moderate', adminAuth, streamController.moderateChatMessage);
 app.get('/api/admin/streams', adminAuth, streamController.adminListAll);
+app.post('/api/streams/:id/mod-chat', adminAuth, streamController.addModChatMessage);
+app.get('/api/streams/:id/mod-chat', adminAuth, streamController.listModChatMessages);
+app.get('/api/streams/:id/analytics', adminAuth, streamController.getStreamAnalytics);
+
+// Streaming Engagement: Q&A and Reactions
+app.post('/api/streams/:id/questions', streamController.addQuestion);
+app.get('/api/streams/:id/questions', streamController.listQuestions);
+app.patch('/api/streams/questions/:qId/answer', adminAuth, streamController.answerQuestion);
+app.post('/api/streams/:id/reactions', streamController.addReaction);
+app.get('/api/streams/:id/reactions', streamController.getReactions);
 
 // search routes
 app.get('/api/search', searchRateLimiter, searchController.search);

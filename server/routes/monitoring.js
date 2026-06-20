@@ -14,13 +14,10 @@ import {
 } from '../services/errorTrackingService.js';
 import logger from '../utils/logger.js';
 import { validateDataIntegrity } from '../utils/dataIntegrityValidator.js';
-import { getSessionSecurityData } from '../utils/sessionSecurity.js';
 import { getMigrationStatus } from '../utils/migrationSafety.js';
 import { recordPageLoad } from '../observability/metrics.js';
-import { getServiceHealth, getFailoverStatus } from '../utils/failoverManager.js';
-import securityPatchManager from "../utils/securityPatchManager.js";
-import encryptionManager from "../utils/encryptionManager.js";
-import { databaseFailoverManager } from "../utils/databaseFailoverManager.js";
+import { redisClient } from '../index.js';
+import { HAS_SUPABASE, supabaseRequest } from '../storage/supabaseClient.js';
 
 function requireMonitoringAuth(req, res, next) {
   const authHeader = req.headers.authorization;
@@ -40,17 +37,41 @@ function requireMonitoringAuth(req, res, next) {
 
 /**
  * GET /api/monitoring/health
- * Public liveness probe with no auth required.
- * Returns only liveness status and a timestamp. Operational details such as
- * process uptime and NODE_ENV are deliberately omitted so unauthenticated
- * callers cannot fingerprint the environment or infer deployment timing. The
- * authenticated /metrics endpoint remains the source for detailed telemetry.
+ * Deep health check for Route53/ALB probes.
+ * Verifies connectivity to Database and Redis.
  */
-router.get('/health', (req, res) => {
-  res.status(200).json({
+router.get('/health', async (req, res) => {
+  const health = {
     status: 'healthy',
     timestamp: new Date(),
-  });
+    dependencies: { database: 'ok', redis: 'ok' },
+  };
+
+  try {
+    // Check Redis Connectivity
+    const redisPing = await redisClient.ping();
+    if (redisPing !== 'PONG') throw new Error('Redis down');
+  } catch (err) {
+    health.dependencies.redis = 'error';
+    health.status = 'unhealthy';
+  }
+
+  try {
+    // Check Database (Supabase or Local PG via existing helpers)
+    if (HAS_SUPABASE) {
+      await supabaseRequest('events?limit=1');
+    } else {
+      // Fallback to a simple query if local PG is used
+      const { withDb } = await import('../repositories/db.js');
+      await withDb((client) => client.query('SELECT 1'));
+    }
+  } catch (err) {
+    health.dependencies.database = 'error';
+    health.status = 'unhealthy';
+  }
+
+  const statusCode = health.status === 'healthy' ? 200 : 503;
+  res.status(statusCode).json(health);
 });
 
 /**
@@ -496,20 +517,39 @@ router.get('/migration-status', requireMonitoringAuth, (req, res) => {
   }
 });
 
-router.get('/health', (req, res) => {
-  res.json(getServiceHealth());
-});
+/**
+ * GET /api/monitoring/failover-status
+ * Monitor critical service health and failover readiness.
+ * This provides a more detailed view for DR purposes.
+ */
+router.get('/failover-status', requireMonitoringAuth, async (req, res) => {
+  const failoverStatus = {
+    primaryRegionStatus: 'unknown',
+    secondaryRegionStatus: 'unknown',
+    failoverReady: false,
+    lastChecked: new Date(),
+    details: {},
+  };
 
-router.get('/failover-status', (req, res) => {
-  res.json(getFailoverStatus());
-});
+  // Simulate checks for primary region (can reuse /health logic)
+  const primaryHealthRes = await fetch(
+    `http://localhost:${process.env.PORT || 8787}/api/monitoring/health`
+  );
+  const primaryHealth = await primaryHealthRes.json();
+  failoverStatus.primaryRegionStatus = primaryHealth.status;
+  failoverStatus.details.primary = primaryHealth.dependencies;
 
-router.get('/dependency-health', async (req, res) => {
-  // return dependency status
-});
+  // In a real multi-region setup, you'd probe the secondary region's health endpoint here.
+  // For now, we'll assume secondary is ready if primary is healthy and DR is configured.
+  const isDrConfigured = process.env.DATABASE_URL_REPLICA && process.env.REDIS_URL_SECONDARY; // Example check
+  if (primaryHealth.status === 'healthy' && isDrConfigured) {
+    failoverStatus.secondaryRegionStatus = 'ready';
+    failoverStatus.failoverReady = true;
+  } else {
+    failoverStatus.secondaryRegionStatus = 'unconfigured_or_unhealthy';
+  }
 
-router.get('/deployment-status', (req, res) => {
-  res.json(deploymentStatus);
+  res.status(200).json({ success: true, data: failoverStatus });
 });
 
 // Get security patch scan result
