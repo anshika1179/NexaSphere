@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ResumeUploader from '../../components/ResumeAnalyzer/ResumeUploader';
 import SkillGapChart from '../../components/ResumeAnalyzer/SkillGapChart';
 import CareerRecommendationCard from '../../components/ResumeAnalyzer/CareerRecommendationCard';
@@ -55,12 +55,20 @@ export default function ResumeAnalyzerPage({ onBack }) {
   const [step, setStep] = useState('upload');
   const [result, setResult] = useState(null);
 
-  const handleUpload = () => {
-    setStep('analyzing');
-    setTimeout(() => {
+  // Track timer across unmount scopes
+  useEffect(() => {
+    if (step !== 'analyzing') return;
+
+    const timer = setTimeout(() => {
       setResult(MOCK_RESULT);
       setStep('result');
     }, 2500);
+
+    return () => clearTimeout(timer);
+  }, [step]);
+
+  const handleUpload = () => {
+    setStep('analyzing');
   };
 
   return (
