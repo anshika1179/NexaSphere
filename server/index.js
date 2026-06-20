@@ -37,8 +37,27 @@ import { enhancedTracingMiddleware } from './middleware/enhancedTracingMiddlewar
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { notificationAnalyticsRepository } from './repositories/notificationAnalyticsRepository.js';
 import { initializeSentry, addSentryErrorHandler } from './utils/sentry.js';
+<<<<<<< HEAD
 import { apiRateLimiter, validateLimiters } from './middleware/rateLimiter.js';
 
+=======
+import {
+  apiRateLimiter,
+  formRateLimiter,
+  notificationRateLimiter,
+  activityAuthRateLimiter,
+  portfolioRateLimiter,
+  searchRateLimiter,
+  validateLimiters,
+} from './middleware/rateLimiter.js';
+import {
+  authRateLimiter,
+  protectedActionRateLimiter,
+  passwordResetRateLimiter,
+} from './middleware/authRateLimiter.js';
+import { portfolioRepository } from './repositories/portfolioRepository.js';
+import { portfolioContentSchema, portfolioPutSchema } from './validators/portfolioSchemas.js';
+>>>>>>> pr-resolve-1968
 import { searchController } from './controllers/searchController.js';
 import { Mutex } from 'async-mutex';
 import { CircuitBreaker, circuitBreakerRegistry } from './utils/circuitBreaker.js';
@@ -1584,6 +1603,7 @@ app.get('/api/admin/mentorships', adminAuth, mentorshipController.adminListAll);
 app.get('/api/admin/mentors', adminAuth, mentorshipController.adminListMentors);
 
 // ── Search, Discovery & Recommendation Engine ──
+<<<<<<< HEAD
 app.get('/api/search', searchController.search);
 app.get('/api/search/trending', searchController.trending);
 app.get('/api/recommendations', searchController.recommendations);
@@ -1610,6 +1630,11 @@ app.post('/api/admin/resources', adminAuth, resourcesController.createResource);
 app.put('/api/admin/resources/:id', adminAuth, resourcesController.updateResource);
 app.delete('/api/admin/resources/:id', adminAuth, resourcesController.deleteResource);
 app.patch('/api/admin/resources/:id/moderate', adminAuth, resourcesController.moderateResource);
+=======
+app.get('/api/search', searchRateLimiter, searchController.search);
+app.get('/api/search/trending', searchRateLimiter, searchController.trending);
+app.get('/api/recommendations', searchRateLimiter, searchController.recommendations);
+>>>>>>> pr-resolve-1968
 // Must be registered after all routes.
 app.use(notFoundHandler);
 addSentryErrorHandler(app);

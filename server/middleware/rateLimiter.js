@@ -185,6 +185,7 @@ export const syncRateLimiter = rateLimit({
 });
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> pr-resolve-1977
 export const portfolioRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -204,15 +205,31 @@ export const eventRegistrationLimiter = rateLimit({
   store: createRateLimitStore('rate-limit:event-reg:'),
   handler: (req, res, _next, options) => {
     logger.warn('Event registration rate limit exceeded', {
+=======
+export const searchRateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  store: createRateLimitStore('rate-limit:search:'),
+  handler: (req, res, _next, options) => {
+    logger.warn('Search rate limit exceeded', {
+>>>>>>> pr-resolve-1968
       ip: req.ip,
       path: req.originalUrl || req.path,
       method: req.method,
     });
     res.status(options.statusCode).json({
+<<<<<<< HEAD
       error: 'Too many registration attempts. Please try again later.',
     });
   },
 >>>>>>> pr-resolve-1971
+=======
+      error: 'Too many search requests. Please slow down.',
+    });
+  },
+>>>>>>> pr-resolve-1968
 });
 
 // ---------------------------------------------------------------------------
@@ -248,10 +265,14 @@ export function validateLimiters() {
     syncRateLimiter,
     portfolioRateLimiter,
 <<<<<<< HEAD
+<<<<<<< HEAD
     searchRateLimiter,
 =======
     eventRegistrationLimiter,
 >>>>>>> pr-resolve-1971
+=======
+    searchRateLimiter,
+>>>>>>> pr-resolve-1968
   };
 
   for (const [name, limiter] of Object.entries(limiters)) {
