@@ -261,8 +261,18 @@ const AnalyticsDashboardContent: React.FC<AnalyticsPageProps> = ({ onBack }) => 
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfPageHeight = pdf.internal.pageSize.getHeight();
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+
+      let pageNum = 0;
+      let yOffset = 0;
+      while (yOffset < pdfHeight) {
+        if (pageNum > 0) pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, -yOffset, pdfWidth, pdfHeight);
+        yOffset += pdfPageHeight;
+        pageNum++;
+      }
+
       pdf.save(`NexaSphere_Analytics_${new Date().toISOString().split('T')[0]}.pdf`);
     } catch (err) {
       console.error('Export failed:', err);
