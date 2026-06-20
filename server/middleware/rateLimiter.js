@@ -184,6 +184,7 @@ export const syncRateLimiter = rateLimit({
   },
 });
 
+<<<<<<< HEAD
 >>>>>>> pr-resolve-1977
 export const portfolioRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -194,6 +195,24 @@ export const portfolioRateLimiter = rateLimit({
     "Portfolio update rate limit exceeded",
     "Too many portfolio update attempts from this IP, please try again after 15 minutes."
   ),
+=======
+export const eventRegistrationLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  store: createRateLimitStore('rate-limit:event-reg:'),
+  handler: (req, res, _next, options) => {
+    logger.warn('Event registration rate limit exceeded', {
+      ip: req.ip,
+      path: req.originalUrl || req.path,
+      method: req.method,
+    });
+    res.status(options.statusCode).json({
+      error: 'Too many registration attempts. Please try again later.',
+    });
+  },
+>>>>>>> pr-resolve-1971
 });
 
 // ---------------------------------------------------------------------------
@@ -228,7 +247,11 @@ export function validateLimiters() {
     activityAuthRateLimiter,
     syncRateLimiter,
     portfolioRateLimiter,
+<<<<<<< HEAD
     searchRateLimiter,
+=======
+    eventRegistrationLimiter,
+>>>>>>> pr-resolve-1971
   };
 
   for (const [name, limiter] of Object.entries(limiters)) {

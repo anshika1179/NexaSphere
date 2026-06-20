@@ -11,6 +11,7 @@ import { adminAuditMiddleware, attachOldState } from '../middleware/adminAuditMi
 import { eventsRepository } from '../repositories/eventsRepository.js';
 import { coreTeamService } from '../services/coreTeamService.js';
 import { authRateLimiter, protectedActionRateLimiter } from '../middleware/authRateLimiter.js';
+import { eventRegistrationLimiter } from '../middleware/rateLimiter.js';
 import { portfolioRepository } from '../repositories/portfolioRepository.js';
 import { achievementsRepository } from '../repositories/achievementsRepository.js';
 import { portfolioService } from '../services/portfolioService.js';
@@ -22,7 +23,7 @@ const router = Router();
 router.post('/api/assistant/recommend', upload.single('file'), recommendationsController.getProjectRecommendations);
 router.get('/api/users', usersController.getPublicUsers);
 router.get('/api/content/events', eventsController.listEvents);
-router.post('/api/content/events/:eventId/register', eventRegistrationController.registerForEvent);
+router.post('/api/content/events/:eventId/register', eventRegistrationLimiter, eventRegistrationController.registerForEvent);
 router.get('/api/content/events/:eventId/calendar', eventRegistrationController.getEventCalendar);
 router.get(
   '/api/content/activity-events/:activityKey',
