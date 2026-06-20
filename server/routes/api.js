@@ -15,11 +15,27 @@ import { eventRegistrationLimiter } from '../middleware/rateLimiter.js';
 import { portfolioRepository } from '../repositories/portfolioRepository.js';
 import { achievementsRepository } from '../repositories/achievementsRepository.js';
 import { portfolioService } from '../services/portfolioService.js';
+<<<<<<< HEAD
 import { waitingRoomService } from '../services/waitingRoomService.js';
+=======
+import * as sponsorshipsController from '../controllers/sponsorshipsController.js';
+import { achievementSchema } from '../validators/portfolioSchemas.js';
+import { auditLogRepository } from '../repositories/auditLogRepository.js';
+
+import * as recommendationsController from '../controllers/recommendationsController.js';
+import * as gamificationController from '../controllers/gamificationController.js';
+import multer from 'multer';
+
+const upload = multer({
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+});
+>>>>>>> pr-last-2492
 
 const router = Router();
 
 // Public
+router.get('/api/dashboard/leaderboard', gamificationController.getLeaderboard);
+router.post('/api/dashboard/xp', gamificationController.awardXP);
 router.post('/api/assistant/recommend', upload.single('file'), recommendationsController.getProjectRecommendations);
 router.get('/api/users', usersController.getPublicUsers);
 router.get('/api/content/events', eventsController.listEvents);
