@@ -35,58 +35,48 @@ const TextList = z
       .slice(0, 12);
   });
 
-const CommonIdentitySchema = z
-  .object({
-    fullName: z.string().trim().min(1, 'Full name is required').max(120),
-    collegeEmail: EmailSchema,
-    whatsapp: WhatsAppSchema,
-    branch: z.string().trim().min(1, 'Branch is required').max(100),
-    section: SectionSchema,
-    submittedAt: z.string().trim().max(80).optional(),
-    userAgent: z.string().trim().max(255).optional(),
-    formType: z.string().trim().max(40).optional(),
-    name: z.string().trim().min(1).max(120).optional(),
-    email: EmailSchema.optional(),
-    reason: z.string().trim().min(1).max(1200).optional(),
-    whyJoin: z.string().trim().min(1).max(1200).optional(),
-  })
-  .strip();
+const CommonIdentitySchema = z.object({
+  fullName: z.string().trim().min(1, 'Full name is required').max(120),
+  collegeEmail: EmailSchema,
+  whatsapp: WhatsAppSchema,
+  branch: z.string().trim().min(1, 'Branch is required').max(100),
+  section: SectionSchema,
+  submittedAt: z.string().trim().max(80).optional(),
+  userAgent: z.string().trim().max(255).optional(),
+  formType: z.string().trim().max(40).optional(),
+  name: z.string().trim().min(1).max(120).optional(),
+  email: EmailSchema.optional(),
+  reason: z.string().trim().min(1).max(1200).optional(),
+  whyJoin: z.string().trim().min(1).max(1200).optional(),
+});
 
-const RecruitmentExtrasSchema = z
-  .object({
-    year: z.string({ message: 'Year is required' }).trim().min(1, 'Year is required').max(40),
-    role: OptionalText(80),
-    interests: TextList,
-    skills: OptionalText(400),
-    comms: OptionalText(400),
-    campusExp: OptionalText(60),
-    campusExpDetails: OptionalText(600),
-    links: OptionalText(600),
-    commitHours: OptionalText(40),
-    attendCampus: OptionalText(40),
-    assessmentOk: OptionalText(40),
-    anythingElse: OptionalText(1200),
-    declarations: z.record(z.string(), z.unknown()).optional(),
-    semester: OptionalText(40),
-    rollNumber: OptionalText(40),
-    course: OptionalText(80),
-    groups: TextList,
-  })
-  .strip();
+const RecruitmentExtrasSchema = z.object({
+  year: z.string().trim().min(1, 'Year is required').max(40),
+  role: OptionalText(80),
+  interests: TextList,
+  skills: OptionalText(400),
+  comms: OptionalText(400),
+  campusExp: OptionalText(60),
+  campusExpDetails: OptionalText(600),
+  links: OptionalText(600),
+  commitHours: OptionalText(40),
+  attendCampus: OptionalText(40),
+  assessmentOk: OptionalText(40),
+  anythingElse: OptionalText(1200),
+  declarations: z.record(z.string(), z.unknown()).optional(),
+  semester: OptionalText(40),
+  rollNumber: OptionalText(40),
+  course: OptionalText(80),
+  groups: TextList,
+});
 
-const MembershipExtrasSchema = z
-  .object({
-    rollNumber: OptionalText(40),
-    course: OptionalText(80),
-    semester: z
-      .string({ message: 'Semester is required' })
-      .trim()
-      .min(1, 'Semester is required')
-      .max(40),
-    groups: TextList,
-    whyJoin: z.string().trim().max(1200).optional(),
-  })
-  .strip();
+const MembershipExtrasSchema = z.object({
+  rollNumber: OptionalText(40),
+  course: OptionalText(80),
+  semester: z.string().trim().min(1, 'Semester is required').max(40),
+  groups: TextList,
+  whyJoin: z.string().trim().max(1200).optional(),
+});
 
 function pickString(primary, fallback) {
   const value = String(primary ?? fallback ?? '').trim();
@@ -109,7 +99,8 @@ function normalizeBase(data) {
   };
 }
 
-const recruitmentSubmissionSchema = CommonIdentitySchema.merge(RecruitmentExtrasSchema)
+const recruitmentSubmissionSchema = CommonIdentitySchema.passthrough()
+  .merge(RecruitmentExtrasSchema.passthrough())
   .superRefine((data, ctx) => {
     if (!data.collegeEmail && !data.email) {
       ctx.addIssue({
@@ -117,9 +108,6 @@ const recruitmentSubmissionSchema = CommonIdentitySchema.merge(RecruitmentExtras
         path: ['collegeEmail'],
         message: 'Email address is required',
       });
-    }
-    if (!String(data.year || '').trim()) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['year'], message: 'Year is required' });
     }
     if (!data.reason && !data.whyJoin) {
       ctx.addIssue({
@@ -152,11 +140,14 @@ const recruitmentSubmissionSchema = CommonIdentitySchema.merge(RecruitmentExtras
       groups: data.groups,
       whyJoin: normalized.reason,
     };
-  });
+  })
+  // Strip any leftover fallback/unknown keys at the final output boundary
+  .pipe(z.object({}).passthrough().strip());
 
 const coreTeamApplicationSchema = recruitmentSubmissionSchema;
 
-const membershipSubmissionSchema = CommonIdentitySchema.merge(MembershipExtrasSchema)
+const membershipSubmissionSchema = CommonIdentitySchema.passthrough()
+  .merge(MembershipExtrasSchema.passthrough())
   .superRefine((data, ctx) => {
     if (!data.collegeEmail && !data.email) {
       ctx.addIssue({
@@ -184,18 +175,8 @@ const membershipSubmissionSchema = CommonIdentitySchema.merge(MembershipExtrasSc
       whyJoin: normalized.reason,
       reason: normalized.reason,
     };
-  });
-
-export function normalizeFormSubmission(formType, body) {
-  if (formType === 'membership') {
-    return membershipSubmissionSchema.parse(body || {});
-  }
-
-  if (formType === 'recruitment' || formType === 'core_team') {
-    return coreTeamApplicationSchema.parse(body || {});
-  }
-
-  throw new Error(`Unsupported form type: ${formType}`);
-}
+  })
+  // Strip any leftover fallback/unknown keys at the final output boundary
+  .pipe(z.object({}).passthrough().strip());
 
 export { coreTeamApplicationSchema, membershipSubmissionSchema, recruitmentSubmissionSchema };
