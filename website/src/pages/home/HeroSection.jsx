@@ -15,7 +15,8 @@ function RippleBtn({ cls, children, href, onClick }) {
     el.style.left = e.clientX - r.left + 'px';
     el.style.top = e.clientY - r.top + 'px';
     b.appendChild(el);
-    setTimeout(() => el.remove(), 700);
+    const t = setTimeout(() => el.remove(), 700);
+    timeoutsRef.current.push(t);
     onClick && onClick(e);
   };
   if (href)
