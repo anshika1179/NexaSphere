@@ -92,8 +92,3 @@ export function getErrorStats() {
     topErrors: groups.slice(0, 10),
   };
 }
-
-export function trackAndThrow(error, context = {}) {
-  trackError(error, context);
-  throw error;
-}
