@@ -86,6 +86,16 @@ export function Sidebar() {
   const location = useLocation();
 
   const [open, setOpen] = useState(false);
+  const [theme, setTheme] = useState(document.documentElement.getAttribute('data-theme') || 'dark');
+  const toggleTheme = () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+
+    document.documentElement.setAttribute('data-theme', newTheme);
+
+    localStorage.setItem('ns-admin-theme', newTheme);
+
+    setTheme(newTheme);
+  };
 
   const sidebarRef = useRef(null);
 
@@ -257,8 +267,21 @@ export function Sidebar() {
           <span className="sidebar-email" aria-label={`Logged in as ${email}`}>
             {email}
           </span>
+          <button
+            className="btn-logout"
+            onClick={toggleTheme}
+            aria-label="Toggle theme"
+            style={{ marginBottom: '10px' }}
+          >
+            Switch to {theme === 'dark' ? 'Light' : 'Dark'} Mode
+          </button>
 
-          <button className="btn-logout" onClick={logout} aria-label={`Logout ${email}`}>
+          <button
+            className="btn-logout"
+            onClick={logout}
+            aria-label={`Logout ${email}`}
+            style={{ marginTop: '10px' }}
+          >
             Logout
           </button>
         </div>
