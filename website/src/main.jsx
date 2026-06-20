@@ -25,8 +25,17 @@ window.addEventListener('error', (event) => {
 });
 
 // Apply saved theme before React renders — prevents flash of wrong theme
-const savedTheme = localStorage.getItem('ns-theme') || 'dark';
-document.documentElement.setAttribute('data-theme', savedTheme);
+try {
+  const savedTheme = localStorage.getItem('ns-theme');
+  if (savedTheme === 'light' || savedTheme === 'dark') {
+    document.documentElement.setAttribute('data-theme', savedTheme);
+  } else {
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+  }
+} catch (e) {
+  document.documentElement.setAttribute('data-theme', 'dark');
+}
 
 // ── PWA Service Worker Registration ──────────────────────────────────────────
 let _updateSW = null;

@@ -4,7 +4,7 @@ import QuestTracker from '../../components/dashboard/QuestTracker';
 import Leaderboard from '../../components/dashboard/Leaderboard';
 import AiMentor from '../../components/dashboard/AiMentor';
 import { buildUrl, getAiApiBase, getApiBase } from '../../utils/runtimeConfig';
-import { useStudentAuth } from '../../context/StudentAuthContext';
+import { useTheme } from '../../hooks/useTheme';
 
 function DashboardCardSkeleton({ count = 3 }) {
   return (
@@ -44,166 +44,9 @@ function DashboardCardSkeleton({ count = 3 }) {
 }
 
 export default function DashboardPage({ onBack }) {
-  const { user: authUser } = useStudentAuth();
-  const currentUser = authUser
-    ? {
-        id: authUser.sub || authUser.id,
-        name: authUser.name || 'Explorer',
-        email: authUser.email || '',
-        role: authUser.role || 'student',
-      }
-    : { id: 'user_123', name: 'Explorer', email: '', role: 'student' };
-
-  const [slackUserId, setSlackUserId] = useState('');
-  const [slackDmReminders, setSlackDmReminders] = useState(false);
-  const [globalSlackConfig, setGlobalSlackConfig] = useState({
-    connected: false,
-    channel_name: '',
-    channel_id: '',
-    notify_new_events: true,
-    notify_registrations: true,
-    notify_announcements: true,
-  });
-
-  const [slackSuccess, setSlackSuccess] = useState(false);
-  const [slackError, setSlackError] = useState(null);
-  const [savingSlackSettings, setSavingSlackSettings] = useState(false);
-  const [savingGlobalSlack, setSavingGlobalSlack] = useState(false);
-  const [disconnectingSlack, setDisconnectingSlack] = useState(false);
-
-  const isAdmin = currentUser.role === 'admin';
-
-  useEffect(() => {
-    if (authUser) {
-      setSlackUserId(authUser.slack_user_id || '');
-      setSlackDmReminders(!!authUser.slack_dm_reminders);
-    }
-  }, [authUser]);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('slack_success') === 'true') {
-      setSlackSuccess(true);
-      params.delete('slack_success');
-      const cleanUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '') + window.location.hash;
-      window.history.replaceState({}, '', cleanUrl);
-    }
-    const err = params.get('slack_error');
-    if (err) {
-      setSlackError(err);
-      params.delete('slack_error');
-      const cleanUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '') + window.location.hash;
-      window.history.replaceState({}, '', cleanUrl);
-    }
-  }, []);
-
-  const fetchGlobalSlackConfig = async () => {
-    if (!isAdmin) return;
-    try {
-      const base = getApiBase();
-      const res = await fetch(`${base}/api/admin/slack/config`, {
-        credentials: 'include',
-      });
-      if (res.ok) {
-        const config = await res.json();
-        setGlobalSlackConfig(config);
-      }
-    } catch (err) {
-      console.error('[Dashboard] Error fetching global Slack config:', err);
-    }
-  };
-
-  useEffect(() => {
-    fetchGlobalSlackConfig();
-  }, [authUser]);
-
-  const handleSaveStudentSlack = async () => {
-    setSavingSlackSettings(true);
-    try {
-      const base = getApiBase();
-      const token = localStorage.getItem('ns_student_token');
-      const res = await fetch(`${base}/api/auth/slack-settings`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          slackUserId,
-          slackDmReminders,
-        }),
-      });
-      if (res.ok) {
-        alert('Slack DM preferences saved successfully!');
-      } else {
-        alert('Failed to save Slack settings.');
-      }
-    } catch (e) {
-      console.error(e);
-      alert('Error saving Slack settings.');
-    } finally {
-      setSavingSlackSettings(false);
-    }
-  };
-
-  const handleSaveGlobalSlack = async () => {
-    setSavingGlobalSlack(true);
-    try {
-      const base = getApiBase();
-      const res = await fetch(`${base}/api/admin/slack/config`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          notify_new_events: globalSlackConfig.notify_new_events,
-          notify_registrations: globalSlackConfig.notify_registrations,
-          notify_announcements: globalSlackConfig.notify_announcements,
-        }),
-        credentials: 'include',
-      });
-      if (res.ok) {
-        alert('Workspace Slack notification settings updated!');
-        fetchGlobalSlackConfig();
-      } else {
-        alert('Failed to update workspace Slack settings.');
-      }
-    } catch (e) {
-      console.error(e);
-      alert('Error updating workspace settings.');
-    } finally {
-      setSavingGlobalSlack(false);
-    }
-  };
-
-  const handleDisconnectSlack = async () => {
-    if (!confirm('Are you sure you want to disconnect Slack from this workspace?')) return;
-    setDisconnectingSlack(true);
-    try {
-      const base = getApiBase();
-      const res = await fetch(`${base}/api/admin/slack/disconnect`, {
-        method: 'DELETE',
-        credentials: 'include',
-      });
-      if (res.ok) {
-        alert('Slack successfully disconnected!');
-        fetchGlobalSlackConfig();
-      } else {
-        alert('Failed to disconnect Slack.');
-      }
-    } catch (e) {
-      console.error(e);
-      alert('Error disconnecting Slack.');
-    } finally {
-      setDisconnectingSlack(false);
-    }
-  };
-
-  const handleConnectSlack = () => {
-    const base = getApiBase();
-    window.location.href = `${base}/api/slack/auth`;
-  };
-
+  const { theme: currentTheme, setTheme } = useTheme();
+  // Mock current user for demonstration
+  const [currentUser] = useState({ id: 'user_123', name: 'Explorer' });
   const [interests, setInterests] = useState([]);
   const [quests, setQuests] = useState([]);
   const [leaderboard, setLeaderboard] = useState([]);
@@ -369,6 +212,93 @@ export default function DashboardPage({ onBack }) {
             }}
           >
             <InterestSelector selectedInterests={interests} onToggleInterest={toggleInterest} />
+          </div>
+
+          <div
+            style={{
+              background: 'var(--bg-glass)',
+              padding: '24px',
+              borderRadius: '16px',
+              border: '1px solid var(--b2)',
+            }}
+          >
+            <h3 style={{ marginBottom: '12px', color: 'var(--t1)', fontFamily: 'Orbitron, sans-serif' }}>
+              Theme Settings
+            </h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <span style={{ fontSize: '0.85rem', color: 'var(--t2)' }}>Choose your appearance preference:</span>
+              <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                <button
+                  onClick={() => setTheme('light')}
+                  style={{
+                    flex: 1,
+                    padding: '10px 14px',
+                    borderRadius: '8px',
+                    background: currentTheme === 'light' ? 'var(--c1)' : 'rgba(255,255,255,0.04)',
+                    color: currentTheme === 'light' ? '#fff' : 'var(--t1)',
+                    border: '1px solid var(--border-color)',
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    fontWeight: currentTheme === 'light' ? '700' : '500',
+                  }}
+                  onMouseOver={(e) => {
+                    if (currentTheme !== 'light') e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                  }}
+                  onMouseOut={(e) => {
+                    if (currentTheme !== 'light') e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+                  }}
+                >
+                  Light
+                </button>
+                <button
+                  onClick={() => setTheme('dark')}
+                  style={{
+                    flex: 1,
+                    padding: '10px 14px',
+                    borderRadius: '8px',
+                    background: currentTheme === 'dark' ? 'var(--c1)' : 'rgba(255,255,255,0.04)',
+                    color: currentTheme === 'dark' ? '#fff' : 'var(--t1)',
+                    border: '1px solid var(--border-color)',
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    fontWeight: currentTheme === 'dark' ? '700' : '500',
+                  }}
+                  onMouseOver={(e) => {
+                    if (currentTheme !== 'dark') e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                  }}
+                  onMouseOut={(e) => {
+                    if (currentTheme !== 'dark') e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+                  }}
+                >
+                  Dark
+                </button>
+                <button
+                  onClick={() => setTheme('system')}
+                  style={{
+                    flex: 1,
+                    padding: '10px 14px',
+                    borderRadius: '8px',
+                    background: currentTheme === 'system' ? 'var(--c1)' : 'rgba(255,255,255,0.04)',
+                    color: currentTheme === 'system' ? '#fff' : 'var(--t1)',
+                    border: '1px solid var(--border-color)',
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    fontWeight: currentTheme === 'system' ? '700' : '500',
+                  }}
+                  onMouseOver={(e) => {
+                    if (currentTheme !== 'system') e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                  }}
+                  onMouseOut={(e) => {
+                    if (currentTheme !== 'system') e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+                  }}
+                >
+                  System
+                </button>
+              </div>
+            </div>
           </div>
 
           <div

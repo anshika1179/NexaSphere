@@ -53,22 +53,7 @@ export const studentUsersRepository = {
         CREATE INDEX IF NOT EXISTS idx_student_users_email ON student_users(email)
       `);
       await client.query(`
-        CREATE TABLE IF NOT EXISTS backup_restore_logs (
-          id SERIAL PRIMARY KEY,
-          backup_key VARCHAR(255),
-          restore_type VARCHAR(50) NOT NULL,
-          target_time TIMESTAMPTZ,
-          status VARCHAR(20) NOT NULL,
-          duration_ms INTEGER,
-          verified_at TIMESTAMPTZ DEFAULT NOW(),
-          error_message TEXT
-        )
-      `);
-      await client.query(`
-        ALTER TABLE student_users ADD COLUMN IF NOT EXISTS slack_user_id VARCHAR(255) DEFAULT NULL;
-      `);
-      await client.query(`
-        ALTER TABLE student_users ADD COLUMN IF NOT EXISTS slack_dm_reminders BOOLEAN DEFAULT FALSE;
+        ALTER TABLE student_users ADD COLUMN IF NOT EXISTS theme VARCHAR(10) DEFAULT NULL;
       `);
     });
   },
@@ -144,6 +129,17 @@ export const studentUsersRepository = {
       const { rows } = await client.query(
         'UPDATE student_users SET role = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
         [role, id]
+      );
+      return rows[0] || null;
+    });
+  },
+
+  async updateTheme(id, theme) {
+    if (!HAS_SUPABASE) return null;
+    return withDb(async (client) => {
+      const { rows } = await client.query(
+        'UPDATE student_users SET theme = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
+        [theme, id]
       );
       return rows[0] || null;
     });
