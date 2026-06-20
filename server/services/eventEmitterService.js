@@ -14,6 +14,7 @@ import {
   sendAttendanceConfirmationEmail,
 } from './emailService.js';
 import { sendPushNotification, sendToTopic } from './pushNotificationService.js';
+import gamificationService from './gamificationService.js';
 
 class RealTimeEventManager extends EventEmitter {
   constructor() {
@@ -48,6 +49,21 @@ class RealTimeEventManager extends EventEmitter {
 
     // Deadline reminder
     this.on('deadline-reminder', this.handleDeadlineReminder.bind(this));
+
+    // Portfolio updated
+    this.on('portfolio-updated', this.handlePortfolioUpdated.bind(this));
+  }
+
+  /**
+   * Handle portfolio updated event
+   */
+  async handlePortfolioUpdated(data) {
+    try {
+      logger.info('Event: Portfolio updated', { username: data.username });
+      await gamificationService.evaluatePortfolio(data.username, data.portfolioData);
+    } catch (error) {
+      logger.error('Error handling portfolio updated event', { error: error.message });
+    }
   }
 
   /**
