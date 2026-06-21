@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import debounce from 'lodash/debounce';
 
 /**
- * Hook for managing advanced search state, persistent safe history, and API interaction
+ * Hook for managing advanced search state and API interaction
  */
 export const useAdvancedSearch = () => {
   const [query, setQuery] = useState('');
