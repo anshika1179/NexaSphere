@@ -1,34 +1,75 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import debounce from 'lodash/debounce';
 
 /**
- * Custom hook managing advanced search profiles and search history query trackers.
- * Wraps local storage token processing in a safe lazy initializer to avoid render crashes.
+ * Hook for managing advanced search state, persistent safe history, and API interaction
  */
 export const useAdvancedSearch = () => {
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [facets, setFacets] = useState({});
+  const [activeFilters, setActiveFilters] = useState({});
+  const [suggestions, setSuggestions] = useState([]);
+  
+  // Safe lazy initializer from current change protecting against malformed JSON crashes
   const [recentSearches, setRecentSearches] = useState(() => {
     try {
       const storedData = localStorage.getItem('recent_searches');
       return storedData ? JSON.parse(storedData) : [];
     } catch (err) {
       console.error('Failed to parse malformed JSON payload from recent_searches storage stream:', err);
-      // Fallback cleanly to an empty array if storage data is corrupted
       return [];
     }
   });
 
-  const [searchFilters, setSearchFilters] = useState({
-    query: '',
-    category: 'all',
-    dateRange: 'anytime'
-  });
+  const fetchResults = useCallback(
+    debounce(async (searchQuery, filters) => {
+      if (searchQuery.length < 2) {
+        setResults([]);
+        setSuggestions([]);
+        return;
+      }
 
-  // Persist healthy historical frames back into sync targets
-  const saveSearchQuery = (newQuery) => {
-    if (!newQuery || newQuery.trim() === '') return;
+      setLoading(true);
+      try {
+        // Build query string with facets
+        const filterParams = new URLSearchParams({
+          q: searchQuery,
+          ...filters,
+        }).toString();
+
+        const response = await fetch(`/api/search?${filterParams}`);
+        const data = await response.json();
+
+        setResults(data.results);
+        setFacets(data.facets);
+        if (data.suggestions) setSuggestions([data.suggestions]);
+
+        // Update recent searches if results found
+        if (data.results.length > 0) {
+          updateRecentSearches(searchQuery);
+        }
+      } catch (error) {
+        console.error('Search API Error:', error);
+      } finally {
+        setLoading(false);
+      }
+    }, 300),
+    []
+  );
+
+  useEffect(() => {
+    fetchResults(query, activeFilters);
+  }, [query, activeFilters, fetchResults]);
+
+  // Combined tracking mechanism utilizing state arguments safely with storage protection
+  const updateRecentSearches = (q) => {
+    if (!q || q.trim() === '') return;
 
     setRecentSearches((prev) => {
-      const filtered = prev.filter(item => item !== newQuery);
-      const updated = [newQuery, ...filtered].slice(0, 10); // Clamp tracking trace length to 10 entries
+      const filtered = prev.filter((item) => item !== q);
+      const updated = [q, ...filtered].slice(0, 5); // Kept the incoming 5-item clamp limit
       
       try {
         localStorage.setItem('recent_searches', JSON.stringify(updated));
@@ -40,11 +81,52 @@ export const useAdvancedSearch = () => {
     });
   };
 
+  const toggleFilter = (category, value) => {
+    setActiveFilters((prev) => {
+      const current = prev[category] || [];
+      const next = current.includes(value)
+        ? current.filter((v) => v !== value)
+        : [...current, value];
+
+      return { ...prev, [category]: next };
+    });
+  };
+
+  const clearFilters = () => setActiveFilters({});
+
+  // Wrapped the saved_searches parser with error safety as well to fulfill the PR's core mission completely
+  const saveSearch = () => {
+    let saved = [];
+    try {
+      const storedSaved = localStorage.getItem('saved_searches');
+      saved = storedSaved ? JSON.parse(storedSaved) : [];
+    } catch (err) {
+      console.error('Failed to parse saved searches payload:', err);
+      saved = [];
+    }
+
+    const newSave = { query, filters: activeFilters, timestamp: Date.now() };
+    const updatedSaved = [...saved, newSave];
+
+    try {
+      localStorage.setItem('saved_searches', JSON.stringify(updatedSaved));
+    } catch (err) {
+      console.error('Failed to save search settings payload profile:', err);
+    }
+  };
+
   return {
+    query,
+    setQuery,
+    results,
+    loading,
+    facets,
+    activeFilters,
+    toggleFilter,
+    clearFilters,
+    suggestions,
     recentSearches,
-    searchFilters,
-    setSearchFilters,
-    saveSearchQuery
+    saveSearch,
   };
 };
 
