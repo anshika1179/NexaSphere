@@ -50,6 +50,10 @@ const __dirname = path.dirname(__filename);
 const CONTENT_FILE = path.join(__dirname, 'data', 'content.json');
 
 const app = express();
+
+// RECTIFIED: Enable 'trust proxy' to correctly extract client IPs from X-Forwarded-For headers when behind ALBs/Serverless layers
+app.set('trust proxy', 1);
+
 initializeSentry(app);
 
 const allowedOrigins = process.env.CORS_ORIGIN

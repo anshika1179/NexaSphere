@@ -2,6 +2,14 @@ import rateLimit from "express-rate-limit";
 import logger from "../utils/logger.js";
 
 // ---------------------------------------------------------------------------
+// SECURITY WARNING: Upstream Proxy Dependency
+// These rate limiters rely entirely on `req.ip` mapping to individual clients.
+// For this security perimeter to operate safely without spoofing vulnerabilities
+// or accidental self-inflicted DoS, ensure `app.set('trust proxy', 1)` (or your
+// specific proxy hop count) is explicitly initialized in the main server app entry file.
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
 // Shared env-var config for the general API limiter
 // Override via API_RATE_LIMIT_WINDOW_MS and API_RATE_LIMIT_MAX in .env
 // ---------------------------------------------------------------------------
