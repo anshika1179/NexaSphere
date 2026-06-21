@@ -147,14 +147,21 @@ const RoadmapBuilderInner: React.FC<RoadmapBuilderInnerProps> = ({
         setMetaDesc(validated.description);
         setNotice("Roadmap imported and restored successfully.");
       } catch (err: any) {
-        setNotice(
-          err.message || "Malformed JSON Schema: could not load roadmap."
-        );
+        let errorMessage = "Malformed JSON Schema: could not load roadmap.";
+        if (err instanceof Error && err.message) {
+          errorMessage = `Validation Error: ${err.message}`;
+        } else if (typeof err === 'string') {
+          errorMessage = `Validation Error: ${err}`;
+        } else if (err && typeof err === 'object' && err.error) {
+          errorMessage = `Validation Error: ${err.error}`;
+        }
+        setNotice(errorMessage);
       }
     };
     reader.readAsText(file);
     e.target.value = ""; // Reset file input trigger
   };
+
 
   // Trigger JSON Export
   const handleExportJSON = () => {
