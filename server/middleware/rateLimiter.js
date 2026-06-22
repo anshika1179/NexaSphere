@@ -2,6 +2,7 @@ import rateLimit from 'express-rate-limit';
 import logger from '../utils/logger.js';
 import { createRateLimitStore } from '../services/rateLimitService.js';
 import { apiSecurityManager } from "../utils/apiSecurityManager.js";
+import { calculateRiskScore } from '../utils/threatDetection.js';
 
 const suspiciousIPs = new Map();
 
