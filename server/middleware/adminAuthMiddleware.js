@@ -416,11 +416,13 @@ async function login(req, res) {
       suspicious,
     });
 
-    return res.status(202).json({
-      requiresTwoFactor: true,
-      challengeToken,
-      suspicious: suspicious.suspicious,
-      reason: suspicious.reason,
+    // RECTIFIED: Hardcode secure attribute and explicitly scope path to root
+    res.cookie('ns_admin_token', session.token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'lax',
+      path: '/',
+      expires: new Date(session.expiresAt),
     });
   } catch (error) {
     console.error('[Admin Login] Failed before 2FA challenge:', error);
