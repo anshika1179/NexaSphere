@@ -36,6 +36,9 @@ import { performanceMonitor } from './middleware/performanceMonitor.js';
 import { enhancedTracingMiddleware } from './middleware/enhancedTracingMiddleware.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { notificationAnalyticsRepository } from './repositories/notificationAnalyticsRepository.js';
+import { notificationPreferencesRepository } from './repositories/notificationPreferencesRepository.js';
+import notificationsService from './services/notificationsService.js';
+import { studentAuthService } from './services/studentAuthService.js';
 import { initializeSentry, addSentryErrorHandler } from './utils/sentry.js';
 import {
   apiRateLimiter,
