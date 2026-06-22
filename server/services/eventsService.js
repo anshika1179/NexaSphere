@@ -3,8 +3,8 @@ import { eventSchema } from '../validators/eventSchemas.js';
 import { recordEventCreated } from '../observability/metrics.js';
 
 export const eventsService = {
-  async listEvents({ page = 1, limit = 20 } = {}) {
-    return eventsRepository.list({ page, limit });
+  async listEvents({ page = 1, limit = 20, status, studentGroups } = {}) {
+    return eventsRepository.list({ page, limit, studentGroups });
   },
 
   async createEvent(input) {
