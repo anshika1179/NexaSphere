@@ -17,6 +17,7 @@ import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 import { adminAuthMiddleware } from './middleware/adminAuthMiddleware.js';
 import analyticsRouter from './routes/analytics.js';
+import customEventsRouter from './routes/customEvents.js';
 import apiRouter from './routes/api.js';
 import { initializeSocketIO } from './config/socket.js';
 import adminStreamRouter from './routes/adminStream.js';
@@ -1140,6 +1141,7 @@ app.use('/api/compliance', complianceRouter);
 
 // Admin Analytics & Metrics (mounted with admin auth)
 app.use('/api/admin/analytics', adminAuth, analyticsRouter);
+app.use('/api/admin/custom-events', adminAuth, customEventsRouter);
 app.use('/api/admin/metrics', adminAuth, adminStreamRouter);
 app.use('/api/admin/scheduled-tasks', adminAuth, scheduledTasksRouter);
 

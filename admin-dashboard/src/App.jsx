@@ -6,6 +6,9 @@ import { OfflineBanner } from './components/OfflineBanner';
 import ErrorBoundary from './components/ErrorBoundary';
 import { LoginPage } from './pages/LoginPage';
 import { UnauthorizedPage } from './pages/UnauthorizedPage';
+import { ComprehensiveAnalytics } from './pages/ComprehensiveAnalytics';
+import { FunnelAnalysis } from './pages/FunnelAnalysis';
+import { CustomEventTracking } from './pages/CustomEventTracking';
 import { ForumManager } from './pages/ForumManager';
 import { MentorshipManager } from './pages/MentorshipManager';
 import { DashboardHome } from './pages/DashboardHome';
@@ -20,6 +23,7 @@ import { PortfolioManager } from './pages/PortfolioManager';
 import { StreamManager } from './pages/StreamManager';
 import { CircuitBreakerManager } from './pages/CircuitBreakerManager';
 import { WaitingRoomManager } from './pages/WaitingRoomManager';
+import { ImpersonationBanner } from './components/ImpersonationBanner';
 import './styles/admin.css';
 
 function RequireAuth() {
@@ -65,6 +69,8 @@ export default function App() {
           <Route element={<DashboardLayout />}>
             <Route path="/dashboard" element={<DashboardHome />} />
             <Route path="/dashboard/analytics" element={<ComprehensiveAnalytics />} />
+            <Route path="/dashboard/analytics/funnel" element={<FunnelAnalysis />} />
+            <Route path="/dashboard/analytics/custom-events" element={<CustomEventTracking />} />
             <Route path="/dashboard/events" element={<EventsManager />} />
             <Route path="/dashboard/activity-events" element={<ActivityEventsManager />} />
             <Route path="/dashboard/core-team" element={<CoreTeamManager />} />
