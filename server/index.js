@@ -7,7 +7,6 @@ import helmet from 'helmet';
 import express from 'express';
 import cors from 'cors';
 import csrf from 'csurf';
-import morgan from 'morgan';
 import fs, { promises as fsp } from 'fs';
 import { body, validationResult } from 'express-validator';
 import { EventEmitter } from 'events';
@@ -28,6 +27,7 @@ import formsRouter from './routes/forms.js';
 import portfolioRouter from './routes/portfolio.js';
 import recoveryRouter from './routes/recovery.js';
 import portfolioExportRouter from './routes/portfolioExport.js';
+import userGroupsRouter from './routes/userGroups.js';
 import notificationsRouter from './routes/notifications.js';
 import adminRouter from './routes/admin.js';
 import announcementsRouter from './routes/announcements.js';
@@ -35,8 +35,12 @@ import bulkRouter from './routes/bulk.js';
 import { validateEnvironment } from './utils/envValidator.js';
 import { performanceMonitor } from './middleware/performanceMonitor.js';
 import { enhancedTracingMiddleware } from './middleware/enhancedTracingMiddleware.js';
+import { apiLogger } from './middleware/apiLogger.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { notificationAnalyticsRepository } from './repositories/notificationAnalyticsRepository.js';
+import { notificationPreferencesRepository } from './repositories/notificationPreferencesRepository.js';
+import notificationsService from './services/notificationsService.js';
+import { studentAuthService } from './services/studentAuthService.js';
 import { initializeSentry, addSentryErrorHandler } from './utils/sentry.js';
 import {
   apiRateLimiter,
@@ -59,24 +63,30 @@ import { Mutex } from 'async-mutex';
 import { CircuitBreaker, circuitBreakerRegistry } from './utils/circuitBreaker.js';
 import { getPublicAppUrl } from './utils/publicAppUrl.js';
 import * as eventsController from './controllers/eventsController.js';
+import './workers/bulkWorker.js';
 import * as activityEventsController from './controllers/activityEventsController.js';
 import * as streamController from './controllers/streamController.js';
 import * as coreTeamController from './controllers/coreTeamController.js';
 import { coreTeamService } from './services/coreTeamService.js';
-import { HAS_SUPABASE } from './storage/supabaseClient.js';
+import { HAS_SUPABASE, SUPABASE_URL, SUPABASE_SERVICE_KEY } from './storage/supabaseClient.js';
 import cookieParser from 'cookie-parser';
 import session from 'express-session';
-import RedisStore from 'connect-redis';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const RedisStore = require('connect-redis').default || require('connect-redis');
 import Redis from 'ioredis';
 import passport from './config/studentOAuth.js';
 import { studentUsersRepository } from './repositories/studentUsersRepository.js';
+import { slackRepository } from './repositories/slackRepository.js';
 import * as studentAuthController from './controllers/studentAuthController.js';
 import * as forumController from './controllers/forumController.js';
 import { requireStudentAuth } from './middleware/studentAuthMiddleware.js';
+import { studentAuthService } from './services/studentAuthService.js';
 import { loadPersistedPushSubscriptions } from './routes/notifications.js';
 import * as mentorshipController from './controllers/mentorshipController.js';
 import { xssSanitizer } from './middleware/xssSanitizer.js';
 import { tierRateLimiter } from './middleware/tierRateLimiter.js';
+import { startWebhookRetryProcessor } from './services/webhookRetryProcessor.js';
 import { csrfProtection } from './middleware/csrfMiddleware.js';
 import compression from 'compression';
 import syncRouter from './routes/sync.js';
@@ -89,6 +99,7 @@ import scheduledTasksRouter from './routes/scheduledTasks.js';
 import financialsRouter from './routes/financials.js';
 import { schedulerService } from './services/schedulerService.js';
 import feedbackRouter from './routes/feedbackRoutes.js';
+import * as slackController from './controllers/slackController.js';
 
 validateLimiters();
 
@@ -100,24 +111,8 @@ validateEnvironment();
 
 const app = express();
 
-setTraceIdResolver(getActiveTraceId);
-initObservability(app);
-
-const useStructuredHttpLog = (process.env.LOG_FORMAT || '').toLowerCase() === 'json';
-
-// Trust the first reverse proxy hop (e.g., Vercel, Render, Nginx, Cloudflare)
-// to correctly populate req.ip and securely discard spoofed X-Forwarded-For headers
-const proxyTrust = process.env.TRUST_PROXY || 1;
-app.set(
-  'trust proxy',
-  proxyTrust === 'true'
-    ? true
-    : proxyTrust === 'false'
-      ? false
-      : !isNaN(proxyTrust)
-        ? parseInt(proxyTrust, 10)
-        : proxyTrust
-);
+// RECTIFIED: Enable 'trust proxy' to correctly extract client IPs from X-Forwarded-For headers when behind ALBs/Serverless layers
+app.set('trust proxy', 1);
 
 initializeSentry(app);
 app.use(compression());
@@ -147,8 +142,8 @@ app.use(
     // Hide X-Powered-By
     hidePoweredBy: true,
 
-    // Disable old IE XSS filter
-    xssFilter: false,
+    // Enable XSS filter (legacy IE/Edge protection)
+    xssFilter: true,
 
     // Restrict referrer leakage
     referrerPolicy: {
@@ -170,33 +165,24 @@ app.use(
       useDefaults: false,
 
       directives: {
-        // Default restriction
         defaultSrc: ["'self'"],
 
-        // Prevent inline scripts + third-party execution
         scriptSrc: ["'self'", 'https://challenges.cloudflare.com'],
 
-        // Allow styles from self only
         styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
 
-        // Images
         imgSrc: [
           "'self'",
           'data:',
           'blob:',
-          'https:',
           'https://api.dicebear.com',
           'https://images.unsplash.com',
         ],
 
-        // Fonts
-        fontSrc: ["'self'", 'https:', 'data:', 'https://fonts.gstatic.com'],
+        fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
 
-        // API/WebSocket connections
         connectSrc: [
           "'self'",
-          'https:',
-          'wss:',
           'https://challenges.cloudflare.com',
           'https://*.ingest.sentry.io',
           'https://*.ingest.us.sentry.io',
@@ -204,35 +190,27 @@ app.use(
           `wss://${process.env.DOMAIN || 'localhost'}`,
         ],
 
-        // Block Flash/object/embed
         objectSrc: ["'none'"],
 
-        // Prevent <base> hijacking
         baseUri: ["'self'"],
 
-        // Prevent iframe embedding
         frameAncestors: ["'none'"],
 
-        // Restrict forms
         formAction: ["'self'"],
 
-        // Prevent mixed content
         upgradeInsecureRequests: [],
 
-        // Restrict workers
         workerSrc: ["'self'", 'blob:'],
 
-        // Restrict manifests
         manifestSrc: ["'self'"],
 
-        // Restrict media
         mediaSrc: ["'self'"],
 
-        // Restrict frames
         frameSrc: ["'self'", 'https://challenges.cloudflare.com', 'https://maps.google.com'],
 
-        // Restrict child browsing contexts
         childSrc: ["'none'"],
+
+        reportUri: '/api/v1/csp-violation',
       },
     },
 
@@ -270,10 +248,7 @@ app.use(
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin) {
-        return callback(null, true);
-      }
-      if (allowedOrigins.includes(origin)) {
+      if (origin && allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
       if (process.env.NODE_ENV === 'test') {
@@ -306,9 +281,7 @@ app.use(enhancedTracingMiddleware);
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 app.use(xssSanitizer);
-if (!useStructuredHttpLog) {
-  app.use(morgan('combined'));
-}
+app.use(apiLogger);
 app.use(performanceMonitor);
 app.use(cookieParser());
 
@@ -327,32 +300,6 @@ app.use(csrfProtection);
 // Global API rate limiter — protects all /api routes from request flooding
 app.use('/api', apiRateLimiter);
 app.use('/api', tierRateLimiter());
-
-function requestLogger(req, res, next) {
-  const start = process.hrtime.bigint();
-  const { method, path, reqId } = req;
-
-  res.on('finish', () => {
-    const duration = Number(process.hrtime.bigint() - start) / 1e6;
-    const status = res.statusCode;
-    const prefix = reqId ? `[${reqId}] ` : '';
-    const message = `${prefix}[${method}] ${path} → ${status} (${Math.round(duration)}ms)`;
-
-    if (status >= 500) {
-      console.error(message);
-    } else if (status >= 400) {
-      console.warn(message);
-    } else {
-      console.log(message);
-    }
-  });
-
-  next();
-}
-
-if (!useStructuredHttpLog) {
-  app.use(requestLogger);
-}
 
 // Mount route modules
 app.use('/api/form-submissions', formSubmissionsRouter);
@@ -576,7 +523,7 @@ const _rawSupabaseRequest = async function _rawSupabaseRequest(
   return text ? JSON.parse(text) : [];
 };
 
-export const supabaseRequest = _rawSupabaseRequest;
+export { _rawSupabaseRequest as supabaseRequest };
 
 export const supabaseBreaker = circuitBreakerRegistry.register(
   'index-supabase',
@@ -1175,6 +1122,15 @@ app.use('/api/admin/analytics', adminAuth, analyticsRouter);
 app.use('/api/admin/metrics', adminAuth, adminStreamRouter);
 app.use('/api/admin/scheduled-tasks', adminAuth, scheduledTasksRouter);
 
+// Setup Bull Board for background job monitoring
+const serverAdapter = new ExpressAdapter();
+serverAdapter.setBasePath('/api/admin/queues');
+createBullBoard({
+  queues: eventRemindersQueue ? [new BullMQAdapter(eventRemindersQueue)] : [],
+  serverAdapter,
+});
+app.use('/api/admin/queues', adminAuth, serverAdapter.getRouter());
+
 // OAuth / SSO Student Auth Endpoints
 app.get('/api/auth/google', studentAuthController.googleAuth);
 app.get('/api/auth/google/callback', studentAuthController.googleCallback);
@@ -1214,7 +1170,7 @@ app.delete('/api/streams/:id', adminAuth, streamController.deleteStream);
 app.post('/api/streams/:id/chat', apiRateLimiter, streamController.addChatMessage);
 app.get('/api/streams/:id/chat', streamController.listChatMessages);
 app.post('/api/streams/:id/ban', adminAuth, streamController.banUser);
-app.post('/api/streams/:id/polls', streamController.createPoll);
+app.post('/api/streams/:id/polls', adminAuth, streamController.createPoll);
 app.get('/api/streams/:id/polls', streamController.listPolls);
 app.post('/api/streams/polls/:pollId/vote', streamController.votePoll);
 app.patch('/api/streams/polls/:pollId/close', adminAuth, streamController.closePoll);
@@ -1461,8 +1417,26 @@ app.get('/api/notifications', async (req, res) => {
   }
 });
 
+function requireNotificationPrefAuth(req, res, next) {
+  adminAuthMiddleware.requireAdmin(req, res, (err) => {
+    if (!err && req.adminSession) {
+      return next();
+    }
+    requireStudentAuth(req, res, (err2) => {
+      if (err2 || !req.studentUser) {
+        return res.status(401).json({ error: 'Unauthorized: Authentication required' });
+      }
+      const userId = req.method === 'GET' ? (req.query.userId || 'global') : (req.body.userId || 'global');
+      if (req.studentUser.sub === userId || req.studentUser.id === userId) {
+        return next();
+      }
+      return res.status(403).json({ error: 'Forbidden: You cannot access or modify other users\' preferences' });
+    });
+  });
+}
+
 // Notification Preferences
-app.get('/api/notifications/preferences', async (req, res) => {
+app.get('/api/notifications/preferences', requireNotificationPrefAuth, async (req, res) => {
   try {
     const userId = req.query.userId || 'global';
     const prefs = await notificationPreferencesRepository.list(userId);
@@ -1472,7 +1446,7 @@ app.get('/api/notifications/preferences', async (req, res) => {
   }
 });
 
-app.put('/api/notifications/preferences', async (req, res) => {
+app.put('/api/notifications/preferences', requireNotificationPrefAuth, async (req, res) => {
   try {
     const userId = req.body.userId || 'global';
     const { category, email, push, in_app, sms, frequency, quiet_start, quiet_end, dnd } = req.body;
@@ -1493,7 +1467,7 @@ app.put('/api/notifications/preferences', async (req, res) => {
   }
 });
 
-app.put('/api/notifications/preferences/bulk', async (req, res) => {
+app.put('/api/notifications/preferences/bulk', requireNotificationPrefAuth, async (req, res) => {
   try {
     const userId = req.body.userId || 'global';
     const { preferences } = req.body;
@@ -1604,23 +1578,37 @@ app.patch('/api/admin/forum/threads/:id/moderate', adminAuth, forumController.mo
 app.patch('/api/admin/forum/replies/:replyId/moderate', adminAuth, forumController.moderateReply);
 app.get('/api/admin/forum/threads', adminAuth, forumController.adminListThreads);
 
+function requireMentorshipAuth(req, res, next) {
+  adminAuthMiddleware.requireAdmin(req, res, (err) => {
+    if (!err && req.adminSession) {
+      return next();
+    }
+    requireStudentAuth(req, res, (err2) => {
+      if (!err2 && req.studentUser) {
+        return next();
+      }
+      return res.status(401).json({ error: 'Unauthorized: Authentication required' });
+    });
+  });
+}
+
 // ── Mentorship & Buddy System ──
 app.get('/api/mentorship/mentors', mentorshipController.listMentors);
 app.get('/api/mentorship/mentors/:id', mentorshipController.getMentor);
-app.post('/api/mentorship/mentors', mentorshipController.registerMentor);
-app.put('/api/mentorship/mentors/:id', adminAuth, mentorshipController.updateMentor);
-app.post('/api/mentorship/requests', mentorshipController.requestMentorship);
-app.get('/api/mentorship/requests', mentorshipController.listMentorships);
-app.get('/api/mentorship/requests/:id', mentorshipController.getMentorship);
+app.post('/api/mentorship/mentors', requireStudentAuth, mentorshipController.registerMentor);
+app.put('/api/mentorship/mentors/:id', requireMentorshipAuth, mentorshipController.updateMentor);
+app.post('/api/mentorship/requests', requireStudentAuth, mentorshipController.requestMentorship);
+app.get('/api/mentorship/requests', requireMentorshipAuth, mentorshipController.listMentorships);
+app.get('/api/mentorship/requests/:id', requireMentorshipAuth, mentorshipController.getMentorship);
 app.put(
   '/api/mentorship/requests/:id/status',
-  adminAuth,
+  requireMentorshipAuth,
   mentorshipController.updateMentorshipStatus
 );
-app.post('/api/mentorship/requests/:id/sessions', mentorshipController.logSession);
-app.get('/api/mentorship/requests/:id/sessions', mentorshipController.listSessions);
-app.post('/api/mentorship/buddy-pairs', mentorshipController.createBuddyPair);
-app.get('/api/mentorship/buddy-pairs', mentorshipController.listBuddyPairs);
+app.post('/api/mentorship/requests/:id/sessions', requireStudentAuth, mentorshipController.logSession);
+app.get('/api/mentorship/requests/:id/sessions', requireStudentAuth, mentorshipController.listSessions);
+app.post('/api/mentorship/buddy-pairs', requireStudentAuth, mentorshipController.createBuddyPair);
+app.get('/api/mentorship/buddy-pairs', requireStudentAuth, mentorshipController.listBuddyPairs);
 app.get('/api/admin/mentorships', adminAuth, mentorshipController.adminListAll);
 app.get('/api/admin/mentors', adminAuth, mentorshipController.adminListMentors);
 
@@ -1689,6 +1677,7 @@ if (process.env.NODE_ENV !== 'test') {
           await learningPathService.runNudgeJob();
         });
       });
+      initializeSocketIO(server);
     });
   } else {
     loadPersistedPushSubscriptions();
