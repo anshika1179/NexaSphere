@@ -17,6 +17,7 @@ import { achievementsRepository } from '../repositories/achievementsRepository.j
 import { portfolioService } from '../services/portfolioService.js';
 import { waitingRoomService } from '../services/waitingRoomService.js';
 import * as sponsorshipsController from '../controllers/sponsorshipsController.js';
+import * as subscriptionsController from '../controllers/subscriptionsController.js';
 import { achievementSchema } from '../validators/portfolioSchemas.js';
 import { auditLogRepository } from '../repositories/auditLogRepository.js';
 

@@ -1105,7 +1105,6 @@ async function fetchWithAuth(url, options = {}) {
           },
         });
       }
-    }
     }, 300); // simulate slight network delay
   });
 }

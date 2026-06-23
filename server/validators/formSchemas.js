@@ -212,5 +212,9 @@ function normalizeFormSubmission(formType, body) {
   throw new Error(`Invalid form type: ${formType}`);
 }
 
-export { coreTeamApplicationSchema, membershipSubmissionSchema, recruitmentSubmissionSchema, normalizeFormSubmission };
-
+export {
+  coreTeamApplicationSchema,
+  membershipSubmissionSchema,
+  recruitmentSubmissionSchema,
+  normalizeFormSubmission,
+};

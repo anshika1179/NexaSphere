@@ -153,5 +153,5 @@ export const getNotifications = notificationsService.getNotifications.bind(notif
 export const markAsRead = notificationsService.markAsRead.bind(notificationsService);
 export const markAllAsRead = notificationsService.markAllAsRead.bind(notificationsService);
 export const clearAll = notificationsService.clearAll.bind(notificationsService);
-export const removeNotification = notificationsService.removeNotification.bind(notificationsService);
-
+export const removeNotification =
+  notificationsService.removeNotification.bind(notificationsService);

@@ -256,7 +256,11 @@ export function Sidebar() {
               >
                 <AdminIcon name={icon} size={16} aria-hidden="true" />
                 {label}
-                <AdminIcon name="ExternalLink" size={12} style={{ marginLeft: 'auto', opacity: 0.5 }} />
+                <AdminIcon
+                  name="ExternalLink"
+                  size={12}
+                  style={{ marginLeft: 'auto', opacity: 0.5 }}
+                />
               </a>
             ) : (
               <NavLink

@@ -53,19 +53,19 @@
      migrated opportunistically. Cryptic vars will be removed after
      full migration is complete.
   ──────────────────────────────────────────────────────────────────── */
-  --brand-primary:    var(--c1);   /* replaces --c1  : brand red         */
-  --brand-light:      var(--c2);   /* replaces --c2  : lighter red        */
-  --text-primary-sem: var(--t1);   /* replaces --t1  : primary text       */
+  --brand-primary: var(--c1); /* replaces --c1  : brand red         */
+  --brand-light: var(--c2); /* replaces --c2  : lighter red        */
+  --text-primary-sem: var(--t1); /* replaces --t1  : primary text       */
   --text-secondary-sem: var(--t2); /* replaces --t2  : secondary text     */
-  --text-muted-sem:   var(--t3);   /* replaces --t3  : muted text         */
-  --surface-base:     var(--bg);   /* replaces --bg  : darkest background */
-  --surface-elevated: var(--bg2);  /* replaces --bg2 : elevated surface   */
-  --border-subtle:    var(--bdr);  /* replaces --bdr : low-contrast border */
-  --border-default:   var(--bdr2); /* replaces --bdr2: standard border    */
-  --radius-sm:        var(--r1);   /* replaces --r1  : 8px                */
-  --radius-md:        var(--r2);   /* replaces --r2  : 14px               */
-  --radius-lg:        var(--r3);   /* replaces --r3  : 22px               */
-  --radius-xl:        var(--r4);   /* replaces --r4  : 32px               */
+  --text-muted-sem: var(--t3); /* replaces --t3  : muted text         */
+  --surface-base: var(--bg); /* replaces --bg  : darkest background */
+  --surface-elevated: var(--bg2); /* replaces --bg2 : elevated surface   */
+  --border-subtle: var(--bdr); /* replaces --bdr : low-contrast border */
+  --border-default: var(--bdr2); /* replaces --bdr2: standard border    */
+  --radius-sm: var(--r1); /* replaces --r1  : 8px                */
+  --radius-md: var(--r2); /* replaces --r2  : 14px               */
+  --radius-lg: var(--r3); /* replaces --r3  : 22px               */
+  --radius-xl: var(--r4); /* replaces --r4  : 32px               */
 }
 
 :root,
