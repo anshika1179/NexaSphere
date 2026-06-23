@@ -73,6 +73,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('Home');
   const [page, setPage] = useState(null);
   const [mobile, setMobile] = useState(window.innerWidth <= 768);
+  const [fontSize, setFontSize] = useState(() => localStorage.getItem('nexa-fontsize') || 'normal');
 
   const { theme, toggleTheme } = useThemeManagement();
   const eventsData = useDynamicEvents(fallbackEvents);
@@ -88,6 +89,19 @@ export default function App() {
     window.addEventListener('resize', handleResize, { passive: true });
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-fontsize', fontSize);
+    localStorage.setItem('nexa-fontsize', fontSize);
+  }, [fontSize]);
+
+  const toggleFontSize = () => {
+    setFontSize((prev) => {
+      if (prev === 'normal') return 'large';
+      if (prev === 'large') return 'extra-large';
+      return 'normal';
+    });
+  };
 
   useInteractionEffects(cinDone, page);
   useBackToTop();
@@ -145,6 +159,8 @@ export default function App() {
             onTabChange={handleTabChange}
             onToggleTheme={toggleTheme}
             theme={theme}
+            fontSize={fontSize}
+            onToggleFontSize={toggleFontSize}
           />
         </>
       )}
