@@ -3,13 +3,21 @@ import { events as fallbackEvents } from '../../data/eventsData';
 import { BannerOrbs } from '../../shared/MotionLayer';
 import Footer from '../../shared/Footer';
 import { DynamicIcon } from '../../shared/Icons';
-import PersonalizedFeed from '../../components/recommendation/PersonalizedFeed';
+import PersonalizedFeed from '../../components/recommendations/PersonalizedFeed';
 import EventCountdown from '../../components/events/EventCountdown.jsx';
 import { useRecommendations } from '../../hooks/useRecommendations';
-import { getEventCountdownStatus,parseDate } from '../../hooks/useCountdown.js';
+import { getEventCountdownStatus, parseDate } from '../../hooks/useCountdown.js';
 import EventCalendarView from '../../components/calendar/EventCalendarView';
+import { useStudentAuth } from '../../context/StudentAuthContext';
+import { EventCardSkeleton } from '../../components/ui/skeleton/EventCardSkeleton';
 
-export default function EventsPage({ onBack, onEventClick, events = fallbackEvents }) {
+export default function EventsPage({
+  onBack,
+  onEventClick,
+  events = fallbackEvents,
+  loading = false,
+}) {
+  const { user } = useStudentAuth();
   const [view, setView] = useState('timeline');
   const [recommendationView, setRecommendationView] = useState(false);
   const [now] = useState(() => Date.now());
@@ -29,12 +37,12 @@ export default function EventsPage({ onBack, onEventClick, events = fallbackEven
         const bIsUpcoming = b.status !== 'completed';
         if (aIsUpcoming !== bIsUpcoming) return bIsUpcoming ? 1 : -1;
         const da = parseDate(a.startDate ?? a.date)?.getTime() ?? 0;
-       const db = parseDate(b.startDate ?? b.date)?.getTime() ?? 0;
+        const db = parseDate(b.startDate ?? b.date)?.getTime() ?? 0;
         return aIsUpcoming ? da - db : db - da;
       });
   }, [events, now]);
 
-  const { recommendations, loading: recsLoading } = useRecommendations(sortedEvents);
+  const { recommendations, loading: recsLoading } = useRecommendations(user?.sub || user?.id || '');
 
   const buildGradient = (ev) => {
     if (ev.gradientColors?.length > 1) {
@@ -224,7 +232,9 @@ export default function EventsPage({ onBack, onEventClick, events = fallbackEven
       </div>
 
       <div className="container">
-        {recommendationView ? (
+        {loading ? (
+          <EventCardSkeleton count={3} />
+        ) : recommendationView ? (
           <PersonalizedFeed
             events={recommendations}
             loading={recsLoading}
@@ -233,7 +243,7 @@ export default function EventsPage({ onBack, onEventClick, events = fallbackEven
         ) : view === 'timeline' ? (
           <div className="events-timeline ns-reveal">
             {sortedEvents.map((ev, i) => {
-              const hasDetailPage = !!ev.hasDetailPage;
+              const hasDetailPage = ev.hasDetailPage !== false;
               const dynamicGradient = buildGradient(ev);
               const glowColor = ev.gradientColors?.[0] || null;
               return (
