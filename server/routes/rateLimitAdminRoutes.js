@@ -7,14 +7,6 @@ import { createClient } from 'redis';
 import logger from '../utils/logger.js';
 import { adminAuthMiddleware } from '../middleware/adminAuthMiddleware.js';
 import rateLimit from 'express-rate-limit';
-
-const adminRouteLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 60,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: 'Too many requests' },
-});
 import {
   addToWhitelist,
   removeFromWhitelist,
@@ -26,7 +18,9 @@ import {
 } from '../middleware/throttleMiddleware.js';
 
 const router = Router();
-
+router.use(
+  rateLimit({ windowMs: 60 * 1000, max: 60, standardHeaders: true, legacyHeaders: false })
+);
 let _redis = null;
 async function redis() {
   if (_redis) return _redis;
@@ -53,7 +47,7 @@ async function scanKeys(pattern) {
 router.get(
   '/api/admin/rate-limits/status',
   adminAuthMiddleware.requireAdmin,
-  adminRouteLimiter,
+
   async (req, res) => {
     try {
       const r = await redis();
@@ -111,7 +105,7 @@ router.get(
 router.get(
   '/api/admin/rate-limits/violations',
   adminAuthMiddleware.requireAdmin,
-  adminRouteLimiter,
+
   async (req, res) => {
     try {
       const { page = 1, limit = 50 } = req.query;
@@ -148,7 +142,7 @@ router.get(
 router.post(
   '/api/admin/rate-limits/override',
   adminAuthMiddleware.requireAdmin,
-  adminRouteLimiter,
+
   async (req, res) => {
     try {
       const { identifier, limitPerMinute } = req.body;
@@ -174,7 +168,7 @@ router.post(
 router.delete(
   '/api/admin/rate-limits/override/:identifier',
   adminAuthMiddleware.requireAdmin,
-  adminRouteLimiter,
+
   async (req, res) => {
     try {
       const r = await redis();
@@ -189,7 +183,7 @@ router.delete(
 router.get(
   '/api/admin/rate-limits/whitelist',
   adminAuthMiddleware.requireAdmin,
-  adminRouteLimiter,
+
   async (req, res) => {
     try {
       res.json({ whitelist: await getWhitelist() });
@@ -202,7 +196,7 @@ router.get(
 router.post(
   '/api/admin/rate-limits/whitelist',
   adminAuthMiddleware.requireAdmin,
-  adminRouteLimiter,
+
   async (req, res) => {
     try {
       const { ip } = req.body;
@@ -219,7 +213,7 @@ router.post(
 router.delete(
   '/api/admin/rate-limits/whitelist/:ip',
   adminAuthMiddleware.requireAdmin,
-  adminRouteLimiter,
+
   async (req, res) => {
     try {
       await removeFromWhitelist(req.params.ip);
@@ -233,7 +227,7 @@ router.delete(
 router.get(
   '/api/admin/rate-limits/blacklist',
   adminAuthMiddleware.requireAdmin,
-  adminRouteLimiter,
+
   async (req, res) => {
     try {
       res.json({ blacklist: await getBlacklist() });
@@ -246,7 +240,7 @@ router.get(
 router.post(
   '/api/admin/rate-limits/blacklist',
   adminAuthMiddleware.requireAdmin,
-  adminRouteLimiter,
+
   async (req, res) => {
     try {
       const { ip } = req.body;
@@ -263,7 +257,7 @@ router.post(
 router.delete(
   '/api/admin/rate-limits/blacklist/:ip',
   adminAuthMiddleware.requireAdmin,
-  adminRouteLimiter,
+
   async (req, res) => {
     try {
       await removeFromBlacklist(req.params.ip);
@@ -277,7 +271,7 @@ router.delete(
 router.post(
   '/api/admin/rate-limits/unblock',
   adminAuthMiddleware.requireAdmin,
-  adminRouteLimiter,
+
   async (req, res) => {
     try {
       const { ip } = req.body;
