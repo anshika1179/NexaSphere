@@ -457,7 +457,7 @@ async function login(req, res) {
   }
 }
 
-async function completeAdminLogin({ res, username, role, scopes, ip, userAgent, suspicious }) {
+async function completeAdminLogin({ req, res, username, role, scopes, ip, userAgent, suspicious }) {
   // Create session in PostgreSQL (audit trail + persistence)
   const session = await createAdminSession({
     username,
@@ -493,6 +493,13 @@ async function completeAdminLogin({ res, username, role, scopes, ip, userAgent, 
     console.error('[Admin Login] Failed to write session to Redis:', redisErr);
   }
 
+  // Regenerate express-session to prevent session fixation
+  if (req && req.session && typeof req.session.regenerate === 'function') {
+    req.session.regenerate((err) => {
+      if (err) console.error('[Session] Error regenerating session:', err);
+    });
+  }
+  
   res.cookie('ns_admin_token', session.token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
@@ -544,7 +551,7 @@ async function verifyTwoFactor(req, res) {
       }
     }
 
-    return completeAdminLogin({ res, ...pending });
+    return completeAdminLogin({ req, res, ...pending });
   } catch {
     return res.status(500).json({ error: 'Unable to create admin session' });
   }
@@ -574,7 +581,7 @@ async function verifyTwoFactorSetup(req, res) {
       backupCodes: pending.backupCodes,
     });
 
-    return completeAdminLogin({ res, ...pending });
+    return completeAdminLogin({ req, res, ...pending });
   } catch (error) {
     console.error('[Admin 2FA] Setup verification failed:', error);
     return res.status(500).json({ error: 'Unable to verify two-factor setup' });
@@ -600,6 +607,13 @@ async function logout(req, res) {
     } else {
       // In case logout is called without authentication
       return res.status(401).json({ error: 'No active session to revoke' });
+    }
+
+    // Destroy express-session
+    if (req.session && typeof req.session.destroy === 'function') {
+      req.session.destroy((err) => {
+        if (err) console.error('[Session] Error destroying session:', err);
+      });
     }
 
     res.clearCookie('ns_admin_token', {

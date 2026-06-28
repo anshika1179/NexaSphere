@@ -1,3 +1,4 @@
+import { getRedisClient } from './utils/redis.js';
 import 'dotenv/config';
 import { tracedFetch } from './config/appContext.js';
 import { initObservability } from './observability/index.js';
@@ -304,6 +305,62 @@ app.use(apiLogger);
 app.use(performanceMonitor);
 app.use(cookieParser());
 
+// Verify Redis URL protocol in production
+const redisSessionUrl = process.env.REDIS_URL || '';
+if (process.env.NODE_ENV === 'production' && !redisSessionUrl.startsWith('rediss://')) {
+  console.warn('Security Warning: Redis URL should use rediss:// for TLS in production.');
+}
+
+// Reuse the existing getRedisClient if possible, else create a new one
+let sessionClient = getRedisClient();
+if (!sessionClient) {
+  sessionClient = new Redis(redisSessionUrl);
+}
+
+app.use(session({
+  store: new RedisStore({ client: sessionClient, prefix: 'session:express:' }),
+  secret: SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  name: 'ns_session',
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    sameSite: 'strict',
+    maxAge: process.env.NODE_ENV === 'production' ? 8 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000,
+  }
+}));
+
+// Session logging middleware
+app.use((req, res, next) => {
+  if (req.session && !req.session.created_at) {
+    req.session.created_at = Date.now();
+    req.session.ip = req.ip || req.connection?.remoteAddress || 'unknown';
+    console.log('[Session] New session created:', req.sessionID, 'IP:', req.session.ip);
+  } else if (req.session && req.session.ip && req.session.ip !== (req.ip || req.connection?.remoteAddress)) {
+    console.warn('[Session] Suspicious activity: Session accessed from different IP. Original:', req.session.ip, 'New:', req.ip || req.connection?.remoteAddress);
+  }
+  next();
+});
+
+// Idle timeout middleware (30 mins)
+app.use((req, res, next) => {
+  if (req.session) {
+    const now = Date.now();
+    if (req.session.lastActive && now - req.session.lastActive > 30 * 60 * 1000) {
+      console.log('[Session] Destroying idle session:', req.sessionID);
+      req.session.destroy((err) => {
+        if (err) console.error('[Session] Error destroying idle session:', err);
+        return res.status(401).json({ error: 'Session expired due to inactivity' });
+      });
+      return;
+    }
+    req.session.lastActive = now;
+  }
+  next();
+});
+
+
 // Track app activity for smart notification frequency adjustment
 app.use((req, res, next) => {
   if (req.studentUser || req.adminSession) {
@@ -389,6 +446,7 @@ function requiredStrongPassword(name) {
 }
 
 const ADMIN_EVENT_PASSWORD = requiredStrongPassword('ADMIN_EVENT_PASSWORD');
+const SESSION_SECRET = requiredStrongPassword('SESSION_SECRET');
 
 // ── File Upload Configuration ──
 const UPLOADS_DIR = path.join(__dirname, 'uploads');
