@@ -255,8 +255,8 @@ export default function SystemHealthPage() {
 
         {alerts && alerts.length > 0 && (
           <div style={{ marginBottom: '24px' }}>
-            {alerts.map((alert, i) => (
-              <div key={i} style={alertStyle(alert.severity)}>
+            {alerts.map((alert) => (
+              <div key={`${alert.severity}-${alert.message}`} style={alertStyle(alert.severity)}>
                 <span style={{ fontSize: '16px' }}>
                   {alert.severity === 'critical' ? '🔴' : '🟡'}
                 </span>
