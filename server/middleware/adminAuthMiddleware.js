@@ -405,7 +405,6 @@ async function login(req, res) {
 
     await clearLoginAttempts(ip);
 
-    const matchedUser = adminUsers.find((user) => safeEqual(user.username, u)) || adminUsers[0];
     const role = matchedUser.role || 'SuperAdmin';
     const scopes = getScopesForRole(role);
     const securityAccount = await getOrCreateAdminSecurityAccount(u, matchedUser.email || u);
