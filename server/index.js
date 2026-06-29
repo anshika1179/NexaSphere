@@ -133,13 +133,29 @@ import {
   validateWhatsApp,
   validateSection,
   sanitizeEvent,
-  normalizePhone
+  normalizePhone,
 } from './repositories/contentStore.js';
 
-import { checkPasskeyLockout, recordFailedPasskeyAttempt, clearPasskeyAttempts } from './middleware/auth/passkeyLockout.js';
-import { checkActivityAuthLockout, recordFailedActivityAuth, clearActivityAuthAttempts, canManageActivityEvent } from './middleware/auth/activityAuth.js';
-import { requireNotificationPrefAuth, requireMentorshipAuth } from './middleware/auth/customAuth.js';
-import { uploadWithMagicCheck, validateMagicBytes, UPLOADS_DIR } from './middleware/uploadMiddleware.js';
+import {
+  checkPasskeyLockout,
+  recordFailedPasskeyAttempt,
+  clearPasskeyAttempts,
+} from './middleware/auth/passkeyLockout.js';
+import {
+  checkActivityAuthLockout,
+  recordFailedActivityAuth,
+  clearActivityAuthAttempts,
+  canManageActivityEvent,
+} from './middleware/auth/activityAuth.js';
+import {
+  requireNotificationPrefAuth,
+  requireMentorshipAuth,
+} from './middleware/auth/customAuth.js';
+import {
+  uploadWithMagicCheck,
+  validateMagicBytes,
+  UPLOADS_DIR,
+} from './middleware/uploadMiddleware.js';
 
 import circuitBreakerRouter from './routes/circuitBreaker.js';
 
@@ -150,6 +166,25 @@ const __dirname = path.dirname(__filename);
 const CONTENT_FILE = path.join(__dirname, 'data', 'content.json');
 
 validateEnvironment();
+
+function requiredStrongPassword(name) {
+  const value = String(process.env[name] || '').trim();
+  if (!value) {
+    throw new Error(`Missing environment variable: ${name}`);
+  }
+  const hasLower = /[a-z]/.test(value);
+  const hasUpper = /[A-Z]/.test(value);
+  const hasNumber = /\d/.test(value);
+  const hasSymbol = /[^A-Za-z0-9]/.test(value);
+  if (value.length < 12 || !hasLower || !hasUpper || !hasNumber || !hasSymbol) {
+    throw new Error(
+      `${name} must be at least 12 characters and include uppercase, lowercase, number, and symbol`
+    );
+  }
+  return value;
+}
+const ADMIN_EVENT_PASSWORD = requiredStrongPassword('ADMIN_EVENT_PASSWORD');
+const SESSION_SECRET = requiredStrongPassword('SESSION_SECRET');
 
 const app = express();
 
@@ -333,9 +368,7 @@ app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 app.use(xssSanitizer);
 app.use(sqlInjectionGuard);
-if (!useStructuredHttpLog) {
-  app.use(morgan('combined'));
-}
+
 app.use(apiLogger);
 app.use(performanceMonitor);
 app.use(cookieParser());
@@ -346,14 +379,10 @@ if (process.env.NODE_ENV === 'production' && !redisSessionUrl.startsWith('rediss
   console.warn('Security Warning: Redis URL should use rediss:// for TLS in production.');
 }
 
-// Reuse the existing getRedisClient if possible, else create a new one
-let sessionClient = getRedisClient();
-if (!sessionClient) {
-  sessionClient = new Redis(redisSessionUrl);
-}
+// Reuse the existing getRedisClient if possible
+const sessionClient = getRedisClient();
 
-app.use(session({
-  store: new RedisStore({ client: sessionClient, prefix: 'session:express:' }),
+const sessionConfig = {
   secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
@@ -363,8 +392,14 @@ app.use(session({
     httpOnly: true,
     sameSite: 'strict',
     maxAge: process.env.NODE_ENV === 'production' ? 8 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000,
-  }
-}));
+  },
+};
+
+if (sessionClient) {
+  sessionConfig.store = new RedisStore({ client: sessionClient, prefix: 'session:express:' });
+}
+
+app.use(session(sessionConfig));
 
 // Session logging middleware
 app.use((req, res, next) => {
@@ -372,8 +407,17 @@ app.use((req, res, next) => {
     req.session.created_at = Date.now();
     req.session.ip = req.ip || req.connection?.remoteAddress || 'unknown';
     console.log('[Session] New session created:', req.sessionID, 'IP:', req.session.ip);
-  } else if (req.session && req.session.ip && req.session.ip !== (req.ip || req.connection?.remoteAddress)) {
-    console.warn('[Session] Suspicious activity: Session accessed from different IP. Original:', req.session.ip, 'New:', req.ip || req.connection?.remoteAddress);
+  } else if (
+    req.session &&
+    req.session.ip &&
+    req.session.ip !== (req.ip || req.connection?.remoteAddress)
+  ) {
+    console.warn(
+      '[Session] Suspicious activity: Session accessed from different IP. Original:',
+      req.session.ip,
+      'New:',
+      req.ip || req.connection?.remoteAddress
+    );
   }
   next();
 });
@@ -394,7 +438,6 @@ app.use((req, res, next) => {
   }
   next();
 });
-
 
 // Track app activity for smart notification frequency adjustment
 app.use((req, res, next) => {
@@ -461,28 +504,6 @@ const defaultContent = {
   activityEvents: {},
   coreTeam: [],
 };
-
-function requiredStrongPassword(name) {
-  const value = String(process.env[name] || '').trim();
-  if (!value) {
-    throw new Error(`Missing environment variable: ${name}`);
-  }
-  const hasLower = /[a-z]/.test(value);
-  const hasUpper = /[A-Z]/.test(value);
-  const hasNumber = /\d/.test(value);
-  const hasSymbol = /[^A-Za-z0-9]/.test(value);
-
-  if (value.length < 12 || !hasLower || !hasUpper || !hasNumber || !hasSymbol) {
-    throw new Error(
-      `${name} must be at least 12 characters and include uppercase, lowercase, number, and symbol`
-    );
-  }
-
-  return value;
-}
-
-const ADMIN_EVENT_PASSWORD = requiredStrongPassword('ADMIN_EVENT_PASSWORD');
-const SESSION_SECRET = requiredStrongPassword('SESSION_SECRET');
 
 // ── File Upload Configuration ──
 app.use('/uploads', express.static(UPLOADS_DIR));
@@ -609,7 +630,6 @@ app.post('/api/forum/threads/:id/accept/:replyId', requireStudentAuth, forumCont
 app.patch('/api/admin/forum/threads/:id/moderate', adminAuth, forumController.moderateThread);
 app.patch('/api/admin/forum/replies/:replyId/moderate', adminAuth, forumController.moderateReply);
 app.get('/api/admin/forum/threads', adminAuth, forumController.adminListThreads);
-
 
 // ── Mentorship & Buddy System ──
 app.get('/api/mentorship/mentors', mentorshipController.listMentors);
