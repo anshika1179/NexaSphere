@@ -1,4 +1,6 @@
+import NotFound from './pages/NotFound';
 import { useState, useEffect, useMemo, lazy, Suspense } from 'react';
+import { stateToUrl, urlToState } from './utils/routing';
 import './styles/themes.css';
 import './styles/globals.css';
 import './styles/animations.css';
@@ -70,8 +72,10 @@ const NAV_TABS = [
 
 export default function App() {
   const [cinDone, setCinDone] = useState(false);
-  const [activeTab, setActiveTab] = useState('Home');
-  const [page, setPage] = useState(null);
+  
+  // Use lazy initialization for state derived from the URL
+  const [activeTab, setActiveTab] = useState(() => urlToState(window.location.pathname).activeTab);
+  const [page, setPage] = useState(() => urlToState(window.location.pathname).page);
   const [mobile, setMobile] = useState(window.innerWidth <= 768);
   const [fontSize, setFontSize] = useState(() => localStorage.getItem('nexa-fontsize') || 'normal');
 
