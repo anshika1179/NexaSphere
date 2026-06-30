@@ -123,6 +123,12 @@ const links = [
     icon: 'Settings',
     requiredScope: 'settings:admin',
   },
+  {
+    to: '/dashboard/settings',
+    label: 'Platform Settings',
+    icon: 'Settings',
+    requiredScope: 'settings:admin',
+  },
 ];
 
 export function Sidebar() {

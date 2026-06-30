@@ -1,4 +1,4 @@
-import { getRedisClient } from './utils/redis.js';
+import { initScheduler } from './jobs/reportScheduler.js';
 import 'dotenv/config';
 import { tracedFetch } from './config/appContext.js';
 import { initObservability } from './observability/index.js';
@@ -800,6 +800,7 @@ if (process.env.NODE_ENV !== 'test') {
       server = app.listen(port, () => {
         console.log(`NexaSphere server listening on http://localhost:${port}`);
         schedulerService.init();
+        initScheduler(); // ← add this line
 
         // Register Learning Path Nudges (Runs daily)
         schedulerService.schedule('0 10 * * *', async () => {
@@ -814,6 +815,7 @@ if (process.env.NODE_ENV !== 'test') {
     server = app.listen(port, () => {
       console.log(`NexaSphere server listening on http://localhost:${port}`);
       schedulerService.init();
+      initScheduler();
       startWebhookRetryProcessor();
     });
     initializeSocketIO(server);

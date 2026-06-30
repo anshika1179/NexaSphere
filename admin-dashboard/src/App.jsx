@@ -95,6 +95,7 @@ export default function App() {
             <Route path="/dashboard/sponsorships" element={<SponsorshipsManager />} />
             <Route path="/dashboard/audit-logs" element={<AuditLogViewer />} />
             <Route path="/dashboard/reports" element={<UserEngagementReport />} />
+            <Route path="/dashboard/scheduled-reports" element={<ScheduledReports />} />
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/login" replace />} />
