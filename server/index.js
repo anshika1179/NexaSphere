@@ -23,6 +23,7 @@ import documentationRouter from './routes/documentation.js';
 import monitoringRouter from './routes/monitoring.js';
 import healthRouter from './routes/health.js';
 import coreTeamRouter from './routes/coreTeam.js';
+import segmentsRouter from './routes/segments.js';
 import formsRouter from './routes/forms.js';
 import portfolioRouter from './routes/portfolio.js';
 import recoveryRouter from './routes/recovery.js';
@@ -415,6 +416,9 @@ app.use('/api/webhooks', webhooksRouter);
 
 // Scheduled Tasks Management
 app.use('/api/admin/scheduled-tasks', adminAuth, scheduledTasksRouter);
+
+// User Segments
+app.use('/api/admin/segments', adminAuth, segmentsRouter);
 
 // Database Backup & Recovery Endpoints
 app.get('/api/admin/backups', adminAuth, backupController.getBackups);
