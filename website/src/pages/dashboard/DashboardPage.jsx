@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import InterestSelector from '../../components/dashboard/InterestSelector';
 import QuestTracker from '../../components/dashboard/QuestTracker';
 import Leaderboard from '../../components/dashboard/Leaderboard';
@@ -11,6 +12,7 @@ import { useStudentAuth } from '../../context/StudentAuthContext';
 import { STORAGE_KEYS } from '../../utils/storageKeys';
 
 export default function DashboardPage({ onBack }) {
+  const navigate = useNavigate();
   const { user: authUser } = useStudentAuth();
   const { theme: currentTheme, setTheme } = useTheme();
   const currentUser = authUser
@@ -287,6 +289,39 @@ export default function DashboardPage({ onBack }) {
                 </button>
               </div>
             </div>
+
+            {/* Admin Integrations Card */}
+            {(currentUser.role === 'admin' || currentUser.role === 'SuperAdmin' || currentUser.role === 'faculty') && (
+              <div
+                style={{
+                  background: 'var(--bg-glass)',
+                  padding: '20px',
+                  borderRadius: '16px',
+                  border: '1px solid rgba(204,17,17,0.15)',
+                  marginTop: '20px',
+                }}
+              >
+                <h3 style={{ marginBottom: '12px', fontSize: '1.05rem', color: 'var(--t1)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  ⚙️ Admin Integrations
+                </h3>
+                <button
+                  onClick={() => navigate('/admin/webhooks')}
+                  style={{
+                    width: '100%',
+                    background: 'rgba(204,17,17,0.15)',
+                    border: '1px solid var(--c1)',
+                    borderRadius: '8px',
+                    padding: '10px',
+                    color: '#fff',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  Manage Webhooks
+                </button>
+              </div>
+            )}
           </div>
 
           <div

@@ -430,8 +430,12 @@ app.use('/api/admin', adminRouter);
 app.use('/api', learningPathRouter);
 app.use('/', syncRouter);
 app.use('/api/feedback', feedbackRouter);
+import webhooksRouter from './routes/webhooks.js';
 
 const adminAuth = [apiRateLimiter, adminAuthMiddleware.requireAdmin];
+
+// Webhooks Management
+app.use('/api/webhooks', webhooksRouter);
 
 // Scheduled Tasks Management
 app.use('/api/admin/scheduled-tasks', adminAuth, scheduledTasksRouter);
