@@ -373,6 +373,12 @@ export default function PublicPortfolio({ username, onBack }) {
           </div>
         </header>
 
+        {portfolio.badges && portfolio.badges.length > 0 && (
+          <div style={{ padding: '0 24px', marginBottom: '24px' }}>
+            <ProfileBadges badges={portfolio.badges} />
+          </div>
+        )}
+
         {/* Dynamic section grid layouts */}
         <main className="portfolio-grid">
           {/* Section A: Certified Skills & Badges */}
