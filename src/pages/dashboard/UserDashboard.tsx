@@ -286,6 +286,9 @@ export default function UserDashboard() {
           </div>
         </div>
 
+        {/* Profile Badges */}
+        <ProfileBadges badges={achievements} />
+
         {/* Profile Completion */}
         <div className="bg-[#1A1A1A] rounded-xl border border-[#2A2A2A] p-6 mb-8">
           <div className="flex flex-wrap justify-between items-center gap-4">
