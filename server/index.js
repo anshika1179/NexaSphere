@@ -133,15 +133,32 @@ import {
   validateWhatsApp,
   validateSection,
   sanitizeEvent,
-  normalizePhone
+  normalizePhone,
 } from './repositories/contentStore.js';
 
-import { checkPasskeyLockout, recordFailedPasskeyAttempt, clearPasskeyAttempts } from './middleware/auth/passkeyLockout.js';
-import { checkActivityAuthLockout, recordFailedActivityAuth, clearActivityAuthAttempts, canManageActivityEvent } from './middleware/auth/activityAuth.js';
-import { requireNotificationPrefAuth, requireMentorshipAuth } from './middleware/auth/customAuth.js';
-import { uploadWithMagicCheck, validateMagicBytes, UPLOADS_DIR } from './middleware/uploadMiddleware.js';
+import {
+  checkPasskeyLockout,
+  recordFailedPasskeyAttempt,
+  clearPasskeyAttempts,
+} from './middleware/auth/passkeyLockout.js';
+import {
+  checkActivityAuthLockout,
+  recordFailedActivityAuth,
+  clearActivityAuthAttempts,
+  canManageActivityEvent,
+} from './middleware/auth/activityAuth.js';
+import {
+  requireNotificationPrefAuth,
+  requireMentorshipAuth,
+} from './middleware/auth/customAuth.js';
+import {
+  uploadWithMagicCheck,
+  validateMagicBytes,
+  UPLOADS_DIR,
+} from './middleware/uploadMiddleware.js';
 
 import circuitBreakerRouter from './routes/circuitBreaker.js';
+import { recordCompressionRatio } from './observability/metrics.js';
 
 validateLimiters();
 
@@ -157,7 +174,52 @@ const app = express();
 app.set('trust proxy', 1);
 
 initializeSentry(app);
-app.use(compression());
+
+// Use compression with fallback (Brotli supported by default in compression v1.8 if zlib supports it)
+// Skip compression for responses smaller than 1KB (1024 bytes)
+app.use(
+  compression({
+    threshold: 1024,
+  })
+);
+
+// Middleware to monitor compression ratio
+app.use((req, res, next) => {
+  const originalWrite = res.write;
+  const originalEnd = res.end;
+  let originalSize = 0;
+
+  res.write = function (chunk, encoding, callback) {
+    if (chunk) {
+      originalSize += Buffer.isBuffer(chunk)
+        ? chunk.length
+        : Buffer.byteLength(chunk, typeof encoding === 'string' ? encoding : 'utf8');
+    }
+    return originalWrite.call(this, chunk, encoding, callback);
+  };
+
+  res.end = function (chunk, encoding, callback) {
+    if (chunk && typeof chunk !== 'function') {
+      originalSize += Buffer.isBuffer(chunk)
+        ? chunk.length
+        : Buffer.byteLength(chunk, typeof encoding === 'string' ? encoding : 'utf8');
+    }
+    return originalEnd.apply(this, arguments);
+  };
+
+  res.on('finish', () => {
+    const contentEncoding = res.get('Content-Encoding');
+    if (contentEncoding && ['gzip', 'br', 'deflate'].includes(contentEncoding)) {
+      const compressedSize = parseInt(res.get('Content-Length') || '0', 10);
+      if (originalSize > 0 && compressedSize > 0) {
+        const ratio = compressedSize / originalSize;
+        recordCompressionRatio(contentEncoding, ratio);
+      }
+    }
+  });
+
+  next();
+});
 
 const corsOrigin =
   process.env.CORS_ORIGIN ||
@@ -352,19 +414,21 @@ if (!sessionClient) {
   sessionClient = new Redis(redisSessionUrl);
 }
 
-app.use(session({
-  store: new RedisStore({ client: sessionClient, prefix: 'session:express:' }),
-  secret: SESSION_SECRET,
-  resave: false,
-  saveUninitialized: false,
-  name: 'ns_session',
-  cookie: {
-    secure: process.env.NODE_ENV === 'production',
-    httpOnly: true,
-    sameSite: 'strict',
-    maxAge: process.env.NODE_ENV === 'production' ? 8 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000,
-  }
-}));
+app.use(
+  session({
+    store: new RedisStore({ client: sessionClient, prefix: 'session:express:' }),
+    secret: SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    name: 'ns_session',
+    cookie: {
+      secure: process.env.NODE_ENV === 'production',
+      httpOnly: true,
+      sameSite: 'strict',
+      maxAge: process.env.NODE_ENV === 'production' ? 8 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000,
+    },
+  })
+);
 
 // Session logging middleware
 app.use((req, res, next) => {
@@ -372,8 +436,17 @@ app.use((req, res, next) => {
     req.session.created_at = Date.now();
     req.session.ip = req.ip || req.connection?.remoteAddress || 'unknown';
     console.log('[Session] New session created:', req.sessionID, 'IP:', req.session.ip);
-  } else if (req.session && req.session.ip && req.session.ip !== (req.ip || req.connection?.remoteAddress)) {
-    console.warn('[Session] Suspicious activity: Session accessed from different IP. Original:', req.session.ip, 'New:', req.ip || req.connection?.remoteAddress);
+  } else if (
+    req.session &&
+    req.session.ip &&
+    req.session.ip !== (req.ip || req.connection?.remoteAddress)
+  ) {
+    console.warn(
+      '[Session] Suspicious activity: Session accessed from different IP. Original:',
+      req.session.ip,
+      'New:',
+      req.ip || req.connection?.remoteAddress
+    );
   }
   next();
 });
@@ -394,7 +467,6 @@ app.use((req, res, next) => {
   }
   next();
 });
-
 
 // Track app activity for smart notification frequency adjustment
 app.use((req, res, next) => {
@@ -609,7 +681,6 @@ app.post('/api/forum/threads/:id/accept/:replyId', requireStudentAuth, forumCont
 app.patch('/api/admin/forum/threads/:id/moderate', adminAuth, forumController.moderateThread);
 app.patch('/api/admin/forum/replies/:replyId/moderate', adminAuth, forumController.moderateReply);
 app.get('/api/admin/forum/threads', adminAuth, forumController.adminListThreads);
-
 
 // ── Mentorship & Buddy System ──
 app.get('/api/mentorship/mentors', mentorshipController.listMentors);
