@@ -10,6 +10,7 @@ import * as usersController from '../controllers/usersController.js';
 import { usersRepository } from '../repositories/usersRepository.js';
 import * as attendanceController from '../controllers/attendanceController.js';
 import * as eventAnalyticsController from '../controllers/eventAnalyticsController.js';
+import * as bannersController from '../controllers/bannersController.js';
 import { adminAuditMiddleware, attachOldState } from '../middleware/adminAuditMiddleware.js';
 import { eventsRepository } from '../repositories/eventsRepository.js';
 import { coreTeamService } from '../services/coreTeamService.js';
@@ -56,6 +57,7 @@ router.post(
 );
 router.get('/api/users', usersController.getPublicUsers);
 router.get('/api/content/events', eventsController.listEvents);
+router.get('/api/content/banners', bannersController.listActiveBanners);
 router.post(
   '/api/content/events/:eventId/register',
   eventRegistrationLimiter,
@@ -263,6 +265,13 @@ router.post(
   adminAuditMiddleware,
   subscriptionsController.createSubscription
 );
+
+// Banners Admin
+router.get('/api/admin/banners', adminAuthMiddleware.requireAdmin, bannersController.listAllBanners);
+router.post('/api/admin/banners', adminAuthMiddleware.requireAdmin, bannersController.createBanner);
+router.put('/api/admin/banners/:id', adminAuthMiddleware.requireAdmin, bannersController.updateBanner);
+router.delete('/api/admin/banners/:id', adminAuthMiddleware.requireAdmin, bannersController.deleteBanner);
+
 router.post(
   '/api/admin/subscriptions/:userId/cancel',
   adminAuthMiddleware.requireScope('events:write'),
