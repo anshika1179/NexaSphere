@@ -1,3 +1,5 @@
+import { throttleMiddleware } from '../middleware/throttleMiddleware.js';
+import rateLimitAdminRoutes from './rateLimitAdminRoutes.js';
 import { auditLogController } from '../controllers/auditLogController.js';
 import * as eventsController from '../controllers/eventsController.js';
 import * as activityEventsController from '../controllers/activityEventsController.js';
@@ -23,14 +25,15 @@ import * as subscriptionsController from '../controllers/subscriptionsController
 import * as portfolioAnalyticsController from '../controllers/portfolioAnalyticsController.js';
 import { achievementSchema } from '../validators/portfolioSchemas.js';
 import { auditLogRepository } from '../repositories/auditLogRepository.js';
-import announcementPriorityRouter from "./announcementPriority.js";
-import eventConflictRouter from "./eventConflict.js";
-import waitlistRoutes from "./waitlist.js";
+import * as localAuthController from '../controllers/localAuthController.js';
 
 import * as recommendationsController from '../controllers/recommendationsController.js';
 import * as gamificationController from '../controllers/gamificationController.js';
-import { studentAuthService } from '../services/studentAuthService.js';
+import * as subscriptionsController from '../controllers/subscriptionsController.js';
 import multer from 'multer';
+
+router.use(rateLimitAdminRoutes);
+router.use(throttleMiddleware);
 
 const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
@@ -40,7 +43,12 @@ const router = Router();
 
 // Public
 router.get('/api/dashboard/leaderboard', gamificationController.getLeaderboard);
-router.post('/api/dashboard/xp', protectedActionRateLimiter, adminAuthMiddleware.requireAdmin, gamificationController.awardXP);
+router.post(
+  '/api/dashboard/xp',
+  protectedActionRateLimiter,
+  adminAuthMiddleware.requireAdmin,
+  gamificationController.awardXP
+);
 router.post(
   '/api/assistant/recommend',
   upload.single('file'),
@@ -142,6 +150,10 @@ router.delete(
   usersController.adminDeactivateUser
 );
 router.post('/api/admin/login', authRateLimiter, adminAuthMiddleware.login);
+
+// Local User Auth
+router.post('/api/auth/local/login', authRateLimiter, localAuthController.localLogin);
+
 router.post('/api/admin/2fa/verify', authRateLimiter, adminAuthMiddleware.verifyTwoFactor);
 router.post(
   '/api/admin/2fa/setup/verify',
@@ -308,10 +320,7 @@ router.get(
   portfolioAnalyticsController.getPortfolioAnalytics
 );
 
-router.post(
-  '/api/portfolio/:username/visit',
-  portfolioAnalyticsController.recordPortfolioVisit
-);
+router.post('/api/portfolio/:username/visit', portfolioAnalyticsController.recordPortfolioVisit);
 
 router.get(
   '/api/portfolio/:username/monthly-report',
@@ -396,6 +405,7 @@ router.get(
     }
   }
 );
+router.use('/api/admin/settings', adminAuthMiddleware.requireAdmin, settingsRouter);
 router.post('/api/admin/impersonate/stop', adminAuthMiddleware.requireAdmin, (req, res) => {
   impersonationService.stop(req.adminSession.token);
   return res.json({ impersonating: false });
@@ -403,20 +413,7 @@ router.post('/api/admin/impersonate/stop', adminAuthMiddleware.requireAdmin, (re
 router.get('/api/admin/impersonate/status', adminAuthMiddleware.requireAdmin, (req, res) => {
   const active = impersonationService.getActive(req.adminSession.token);
   return res.json({ impersonating: !!active, user: active?.targetUser || null });
-});
-router.use(
-"/api/announcements",
-announcementPriorityRouter
-);
-
-router.use("/api/events", eventConflictRouter);
-
-router.use(
-  "/api/admin/waitlist",
-  waitlistRoutes
-);
-
-// Audit Log Viewer APIs
+}); // Audit Log Viewer APIs
 router.get('/api/admin/audit-logs', adminAuthMiddleware.requireAdmin, auditLogController.listLogs);
 
 router.get(

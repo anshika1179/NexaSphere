@@ -1,7 +1,17 @@
-import rateLimit from "express-rate-limit";
-import RedisStore from "rate-limit-redis";
-import redisClient from "../utils/redis.js"; // Adjust path if your redis utility is elsewhere
-import logger from "../utils/logger.js";
+import rateLimit from 'express-rate-limit';
+import RedisStore from 'rate-limit-redis';
+import { getRedisClient } from '../utils/redis.js';
+import logger from '../utils/logger.js';
+import { createRateLimitStore } from '../services/rateLimitService.js';
+
+const suspiciousIPs = new Map();
+function calculateRiskScore(req) {
+  return (suspiciousIPs.get(req.ip) || 0) * 20;
+}
+function parsePositiveInt(value, fallback) {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : fallback;
+}
 // ---------------------------------------------------------------------------
 // SECURITY WARNING: Upstream Proxy Dependency
 // These rate limiters rely entirely on `req.ip` mapping to individual clients.
@@ -147,10 +157,15 @@ export const activityAuthRateLimiter = rateLimit({
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
-  store: new RedisStore({
-    sendCommand: (...args) => redisClient.call(args[0], ...args.slice(1)),
-    prefix: "rl:activity:",
-  }),
+  store: (() => {
+    const c = getRedisClient();
+    return c
+      ? new RedisStore({
+          sendCommand: (...args) => c.call(args[0], ...args.slice(1)),
+          prefix: 'rl:activity:',
+        })
+      : undefined;
+  })(),
   handler: (req, res, next, options) => {
     logger.warn('Sync batch rate limit exceeded', {
       ip: req.ip,
@@ -217,6 +232,24 @@ export const searchRateLimiter = rateLimit({
 // Throws immediately if any limiter failed to initialise, preventing the silent
 // "undefined middleware" failure mode that this issue was created to fix.
 // ---------------------------------------------------------------------------
+// Search rate limiter: 30 requests per minute per IP.
+export const searchRateLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 30, // 30 requests per minute
+  standardHeaders: true,
+  legacyHeaders: false,
+  store: createRateLimitStore('rate-limit:search:'),
+  handler: (req, res, next, options) => {
+    logger.warn('Search rate limit exceeded', {
+      ip: req.ip,
+      path: req.originalUrl || req.path,
+    });
+    res.status(options.statusCode).json({
+      error: 'Too many search requests. Please slow down.',
+    });
+  },
+});
+
 export function validateLimiters() {
   const limiters = {
     apiRateLimiter,
@@ -226,7 +259,6 @@ export function validateLimiters() {
     activityAuthRateLimiter,
     syncRateLimiter,
     portfolioRateLimiter,
-    eventRegistrationLimiter,
     searchRateLimiter,
   };
 

@@ -1,4 +1,4 @@
-import PlatformSettings from './pages/dashboard/PlatformSettings';
+import RateLimitMonitor from './pages/dashboard/RateLimitMonitor';
 import AuditLogViewer from './pages/dashboard/AuditLogViewer';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
@@ -27,7 +27,9 @@ import { PortfolioManager } from './pages/PortfolioManager';
 import { StreamManager } from './pages/StreamManager';
 import { CircuitBreakerManager } from './pages/CircuitBreakerManager';
 import { WaitingRoomManager } from './pages/WaitingRoomManager';
-import { ImpersonationBanner } from './components/ImpersonationBanner';
+import { SponsorshipsManager } from './pages/SponsorshipsManager';
+import { ComprehensiveAnalytics } from './pages/ComprehensiveAnalytics';
+import { UserSegmentation } from './pages/UserSegmentation';
 import './styles/admin.css';
 
 function RequireAuth() {
@@ -74,8 +76,7 @@ export default function App() {
             <Route path="/dashboard/settings" element={<PlatformSettings />} />
             <Route path="/dashboard" element={<DashboardHome />} />
             <Route path="/dashboard/analytics" element={<ComprehensiveAnalytics />} />
-            <Route path="/dashboard/analytics/funnel" element={<FunnelAnalysis />} />
-            <Route path="/dashboard/analytics/custom-events" element={<CustomEventTracking />} />
+            <Route path="/dashboard/segments" element={<UserSegmentation />} />
             <Route path="/dashboard/events" element={<EventsManager />} />
             <Route path="/dashboard/activity-events" element={<ActivityEventsManager />} />
             <Route path="/dashboard/core-team" element={<CoreTeamManager />} />
@@ -95,6 +96,7 @@ export default function App() {
             <Route path="/dashboard/sponsorships" element={<SponsorshipsManager />} />
             <Route path="/dashboard/audit-logs" element={<AuditLogViewer />} />
             <Route path="/dashboard/reports" element={<UserEngagementReport />} />
+            <Route path="/dashboard/scheduled-reports" element={<ScheduledReports />} />
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/login" replace />} />

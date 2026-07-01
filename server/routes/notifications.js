@@ -303,6 +303,8 @@ router.post(
 router.get('/notifications', async (req, res) => {
   try {
     const userId = req.query.userId || 'global';
+    const tab = req.query.tab || 'all';
+    const q = req.query.q || null;
 
     if (userId !== 'global') {
       let authenticated = false;
@@ -348,13 +350,12 @@ router.get('/notifications', async (req, res) => {
 
     const offset = parseInt(req.query.offset, 10) || 0;
     const limit = Math.min(parseInt(req.query.limit, 10) || 100, 500);
-    const list = await notificationsService.getNotifications(userId, offset, limit);
+    const list = await notificationsService.getNotifications({ userId, offset, limit, tab, q });
     return res.json({ notifications: list });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
 });
-
 
 router.get('/notifications/preferences', requireNotificationPrefAuth, async (req, res) => {
   try {
@@ -365,7 +366,6 @@ router.get('/notifications/preferences', requireNotificationPrefAuth, async (req
     return res.status(500).json({ error: err.message });
   }
 });
-
 
 router.put('/notifications/preferences', requireNotificationPrefAuth, async (req, res) => {
   try {
@@ -388,7 +388,6 @@ router.put('/notifications/preferences', requireNotificationPrefAuth, async (req
   }
 });
 
-
 router.put('/notifications/preferences/bulk', requireNotificationPrefAuth, async (req, res) => {
   try {
     const userId = req.body.userId || 'global';
@@ -403,7 +402,6 @@ router.put('/notifications/preferences/bulk', requireNotificationPrefAuth, async
   }
 });
 
-
 // Notification analytics (lightweight collector)
 router.post('/notifications/analytics', async (req, res) => {
   try {
@@ -415,6 +413,5 @@ router.post('/notifications/analytics', async (req, res) => {
     return res.status(500).json({ error: err.message });
   }
 });
-
 
 export default router;

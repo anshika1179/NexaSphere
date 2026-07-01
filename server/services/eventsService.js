@@ -42,6 +42,16 @@ export const eventsService = {
     recordEventCreated();
     clearCache('events:list:*');
 
+    // Emit real-time notification to all connected clients
+    try {
+      emitToRoom('notifications-room', 'event-published', {
+        eventId: created.id,
+        eventName: created.name,
+      });
+    } catch (socketErr) {
+      logger.warn(`Could not emit event-published notification: ${socketErr.message}`);
+    }
+
     // Attempt to schedule a reminder if date is parseable
     try {
       const eventDate = new Date(created.date);
