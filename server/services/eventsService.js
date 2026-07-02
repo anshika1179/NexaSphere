@@ -3,7 +3,7 @@ import { eventSchema } from '../validators/eventSchemas.js';
 import { recordEventCreated } from '../observability/metrics.js';
 import { scheduleReminderJob } from './queueService.js';
 import logger from '../utils/logger.js';
-import { emitToRoom } from '../config/socket.js';
+import { getCachedQuery, clearCache } from '../utils/redis.js';
 
 export const eventsService = {
   async listEvents({
@@ -17,17 +17,23 @@ export const eventsService = {
     location,
     search,
   } = {}) {
-    return eventsRepository.list({
-      page,
-      limit,
-      status,
-      studentGroups,
-      startDate,
-      endDate,
-      category,
-      location,
-      search,
-    });
+    const cacheKey = `events:list:${JSON.stringify({ page, limit, status, studentGroups, startDate, endDate, category, location, search })}`;
+    return getCachedQuery(
+      cacheKey,
+      () =>
+        eventsRepository.list({
+          page,
+          limit,
+          status,
+          studentGroups,
+          startDate,
+          endDate,
+          category,
+          location,
+          search,
+        }),
+      300
+    ); // 5 minutes cache
   },
 
   async createEvent(input) {
